@@ -1,0 +1,137 @@
+@media screen and (max-width:480px) {  
+  .dropdown .headerimg img {
+    display: none;
+  }
+}
+
+
+.main-header .logo {
+  height:70px;
+  padding-bottom: 5px;
+}
+
+
+/* .skin-blue .main-sidebar {
+   background-color: #f4b943;
+   font-family: "Calibri";
+   font-size:25px;             
+   line-height:1.42857143;
+   color:#ebebeb;
+   }
+*/
+
+/* Color scheme: Feather: #77C9D4, Marine: #57BC90, Forest: #015249, Sleek Grey: #A5A5AF
+
+
+ /* logo */
+.skin-blue .main-header .logo {
+                      background-color: #77C9D4;
+                      font-family: "Gill Sans", "Gill Sans MT",
+                      }
+
+/* logo when hovered */
+.skin-blue .main-header .logo:hover {
+                      background-color: #77C9D4;
+                      }
+
+/* navbar (rest of the header) */
+.skin-blue .main-header .navbar {
+                      background-color: #77C9D4;
+                      }        
+
+/* main sidebar */
+.skin-blue .main-sidebar {
+                      background-image: linear-gradient(to bottom, #77C9D4, #57BC90);
+                      }
+
+/* active selected tab in the sidebarmenu */
+.skin-blue .main-sidebar .sidebar .sidebar-menu .active a{
+                      background-color: #015249;
+                      }
+
+/* other links in the sidebarmenu */
+.skin-blue .main-sidebar .sidebar .sidebar-menu a{
+                      background-color: rgba(1,82,73,0.5) /*#015249*/;
+                      color: #ffffff;
+                      }
+
+/* other links in the sidebarmenu when hovered */
+ .skin-blue .main-sidebar .sidebar .sidebar-menu a:hover{
+                      background-color: #A5A5AF;
+                      }
+/* toggle button when hovered  */                    
+ .skin-blue .main-header .navbar .sidebar-toggle:hover{
+                      background-color: #A5A5AF;
+                      }
+
+
+
+
+
+
+.main-header .navbar-custom-menu{ 
+  float: right;
+  width: 90%;
+  height: 100%;
+  background-color: #A5A5AF;
+}
+
+
+.navbar-nav{
+  float: left;
+  margin: 0;
+  width: 100%;
+  height: 70px;
+  
+  background-image: linear-gradient(to right, #77C9D4, #57BC90);
+}
+
+.main-header {
+  width:100%;
+}
+
+
+
+
+.main-sidebar{ 
+  position: fixed;
+}
+
+
+div.busy { 
+  position:fixed;
+  top: 40%;
+  left: 50%;
+  margin-top: -100px;
+  margin-left: -50px;
+  display:none;
+  background: rgba(230, 230, 230, .8);
+  text-align: center;
+  padding-top: 20px;
+  padding-left: 30px;
+  padding-bottom: 40px;
+  padding-right: 30px;
+  border-radius: 5px;
+  z-index: 10;
+}
+
+
+.shiny-output-error-valErrorMsgClass{
+  color:  red; /*#24a531;*/
+  font-size: 15px;
+}
+
+.shiny-output-error-valErrorMsgClass_2{
+  color:  #e67e22 ; /* #24a531;*/
+  font-size: 15px;
+}
+
+
+
+.box.box-solid.box-primary>.box-header{
+  background-image: linear-gradient(to bottom right, #77C9D4, #57BC90) !important;
+  
+}
+
+
+
