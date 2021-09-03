@@ -20,7 +20,13 @@ getTempFolderName <- function(){
   paste0("sessionOutputs_", paste(sample(c(letters, LETTERS, 0:9), size = 12, replace = TRUE), collapse = ""))
 }
 
+#' @export
+`%!in%` <- Negate(`%in%`)
+
 
 #' little safety function required to surpass the "Error:" value returned when ref points or resampled user bird density data is missing - 
 #' used when checking/preparing data for modelling
 #' @importFrom  purrr possibly
+#' 
+#' 
+#' 

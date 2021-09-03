@@ -12,7 +12,6 @@
 #' @import tibble
 #' @noRd
 #' 
-#' 
 app_server <- function( input, output, session ) {
 
   # List the first level callModules here
@@ -134,6 +133,49 @@ app_server <- function( input, output, session ) {
   
   
   
+
+# Migratory Map control ---------------------------------------------------
+
+  
+  
+  SpPoly <- reactive({
+    sppc <- "Anser_anser"
+    SpPoly <- all_polygons[[sppc]]
+    SpPoly <- sf::st_transform(SpPoly,4326)
+    
+  })
+  WFshapes <- reactive({
+    EMOD_OSWFs_WGS84_UK[EMOD_OSWFs_WGS84_UK$NAME %in% input$selectInput_builtin_wfList,]
+  })
+  
+  
+  
+  
+  output$MigMap <- renderLeaflet({
+    cur.popup <- paste0("<strong>Name: </strong>", WFshapes()$NAME)
+    leaflet::leaflet() %>%
+      leaflet::addProviderTiles(providers$Esri.OceanBasemap,
+                                options = leaflet::providerTileOptions(noWrap = TRUE)) %>%
+      setView(-4, 55, zoom = 5) %>%
+      addPolygons(data=WFshapes(),weight = 1, fillColor = "red", popup=cur.popup, fillOpacity = 1) %>%
+      addPolygons(data=SpPoly(),fillColor="green",fillOpacity=0.7)
+  })
+  
+  
+
+  observe({
+    cur.popup <- paste0("<strong>Name: </strong>", WFshapes()$NAME)
+    
+    leaflet::leafletProxy("MigMap",data=WFshapes()) %>% clearShapes() %>%
+      addPolygons(weight = 1, fillColor = "red", popup=cur.popup, fillOpacity = 1) %>%
+      addPolygons(data=SpPoly(),fillColor="green",fillOpacity=0.7)
+  })
+  
+  
+  
+  
+  
+  
   
   
   # Include UI holding tab with widgets for a species parameters when species is selected for the first time
@@ -161,8 +203,212 @@ app_server <- function( input, output, session ) {
     })
   })
   
+
+ # Control for adding bird parameters module to the UI based on use --------
   
-# Control for adding wind farm parameters module to the UI based on user's selection -----------------------------------------------------------------
+  BirdNames <- reactive({
+    input$selectInput_builtin_speciesList
+  })
+  
+  birdspecieslist <- reactiveValues(birdspcs=vector())
+  
+  # This will add bird species tabs when the action button is clicked
+  # It should only add tabs if they aren't already on the list
+  observeEvent(input$button_update_Species_tabs, {
+    if(length(birdspecieslist$birdspcs) == 0){
+      lapply(BirdNames(),function(x) {
+        
+        id_name <- species_data$Scientific[which(species_data$Common == x)]
+        id_name <- stringr::str_replace_all(id_name," ","_")
+        
+        appendTab("specTabs",tabPanel(id_name,mod_bird_features_ui(id_name)))
+        
+      })
+      
+      
+      birdspecieslist$birdspcs <- BirdNames()
+    }else if(length(birdspecieslist$birdspcs) > 0){
+      for(j in birdspecieslist$birdspcs){
+        if(j %!in% BirdNames()){
+          removeTab("specTabs",j)
+        }
+      }
+      for(i in BirdNames()){
+        if(i %!in% birdspecieslist$birdspcs){
+          id_name <- species_data$Scientific[which(species_data$Common == i)]
+          id_name <- stringr::str_replace_all(id_name," ","_")
+          
+          appendTab("specTabs",tabPanel(i,mod_bird_features_ui(id_name)))
+        }
+      }
+      birdspecieslist$birdspcs <- BirdNames()
+    }
+    
+  })
+  
+  observeEvent(input$selectInput_builtin_speciesList,{
+    count <- length(BirdNames())
+    
+    output$Species_Count <- renderUI(
+      if(count == 1){
+        p(paste(count,"species has been selected"))  
+      }else{
+        p(paste(count,"species have been selected"))  
+      }
+    )
+  })
+  
+  #observe({
+    ## Use an Lapply to generate the UI for the list of selected wind farms
+    #output$birdData_placeholder <- renderUI({
+      
+    #})
+    ## Lapply through the server function as well, passing the reactive values as data
+    #lapply(WFshapes()$NAME,function(x) mod_WindFarmFeats_server(id = x, data  = rv))
+  #})
+
+  
+  
+  
+  # Bird densities server actions --------------------------------------------
+  
+  
+  # Bird_RVs <- reactiveValues(
+  #   # Input if users will input their own densities or simulate from lines/polygons
+  #   man.or.sim = NULL,#input$radGrpInput_Densities_userinput_or_lines,
+  #   # Input if user will use built-in shapes or upload their own
+  #   defmig.or.custom = NULL,#input$radGrpInput_spshape_builtin_or_userinput,
+  #   # Densities of birds (birds / km2)
+  #   mig.dens = data.frame(windfarm=NULL,
+  #                         prebreed=NULL,prebreedSD=NULL,
+  #                         postbreed=NULL,postbreedSD=NULL,
+  #                         moult=NULL,moultSD=NULL
+  #                         ),
+    # Prebreeding migration switch T/F
+    #premigration = input$switch_pre_breeding_migration,
+    # Postbreeding migration switch T/F
+    #postmigration = input$switch_post_breeding_migration,
+    # Moult migration switch T/F
+    #moultmigration = input$switch_moult_migration
+    
+    #)
+  
+  observeEvent(input$radGrpInput_Densities_userinput_or_lines,{
+    if(input$radGrpInput_Densities_userinput_or_lines == "simulateDensities"){
+      output$spShape_builtin_or_userinput_radio <- renderUI(
+        radioGroupButtons(inputId = "radGrpInput_spshape_builtin_or_userinput",
+                          individual = TRUE,
+                          justified = TRUE, 
+                          label = NULL,
+                          choices = c("Default migration routes" = "existMigration",
+                                      "Custom migration routes" = "customMigration"),
+                          checkIcon = list(yes = tags$i(class = "fa fa-circle",
+                                                        style = "color: steelblue"),
+                                           no = tags$i(class = "fa fa-circle-o",
+                                                       style = "color: steelblue"))),
+      )
+    }else if(input$radGrpInput_Densities_userinput_or_lines == "manualDensities"){
+      removeUI("#radGrpInput_spshape_builtin_or_userinput",immediate = TRUE)
+    }
+  })
+  
+  ### Observe the pre breeding switch - if it's turned on, create the UI for the bird densities
+  observe({
+    output$BreedingDensities <- renderUI({
+      lapply(WFshapes()$NAME,function(x){
+        fluidRow(
+          column(2,
+                 p(x)
+                 ),
+          conditionalPanel(condition="input.switch_pre_breeding_migration == true",
+                           column(3,
+                                  mod_bird_densities_ui(x,"Goose","Pre breeding")
+                                  )
+          ),
+          conditionalPanel(condition="input.switch_post_breeding_migration == true",
+                           column(3,
+                                  mod_bird_densities_ui(x,"Goose","Post breeding")
+                           )
+          ),
+          conditionalPanel(condition="input.switch_other_migration == true",
+                           column(3,
+                                  mod_bird_densities_ui(x,"Goose","Other")
+                           )
+          )
+        )
+        
+      })
+      # fluidRow(
+      #   column(2,
+      #          uiOutput("WF_names")
+      #   )
+      #   column(3,
+      #          uiOutput("pre_breed_densities")
+      #   ),
+      #   column(3,
+      #          uiOutput("post_breed_densities")
+      #   ),
+      #   column(3,
+      #          uiOutput("other_densities")
+      #   )  
+      # )
+    })
+  })
+  
+  
+  
+  ### Observe the post breeding switch - if it's turned on, create the UI for the bird densities
+  observeEvent(input$switch_post_breeding_migration,{
+    if(input$switch_post_breeding_migration == TRUE){
+      output$bird_migration_densities <- renderUI({
+        lapply(WFshapes()$NAME,function(x){
+          mod_bird_densities_ui(x,"Goose","Post breeding")
+          
+        })
+      })  
+    }else if(input$switch_post_breeding_migration == FALSE){
+      lapply(WFshapes()$NAME,function(x){
+        idtoremove <- paste(x,"Goose","Post breeding")
+        idtoremove <- stringr::str_replace_all(idtoremove," ","_")
+        idtoremove <- stringr::str_replace_all(idtoremove,"-","_")
+        idtoremove <- paste0("#",idtoremove,"-counts")
+        removeUI(idtoremove,immediate = TRUE)
+      })
+    }
+  })
+  
+  ### Observe the other migration switch - if it's turned on, create the UI for the bird densities
+  observeEvent(input$switch_other_migration,{
+    if(input$switch_other_migration == TRUE){
+      output$bird_migration_densities <- renderUI({
+        lapply(WFshapes()$NAME,function(x){
+          mod_bird_densities_ui(x,"Goose","Other")
+        })
+      })  
+    }else if(input$switch_other_migration == FALSE){
+      lapply(WFshapes()$NAME,function(x){
+        idtoremove <- paste(x,"Goose","Other")
+        idtoremove <- stringr::str_replace_all(idtoremove," ","_")
+        idtoremove <- stringr::str_replace_all(idtoremove,"-","_")
+        idtoremove <- paste0("#",idtoremove,"-counts")
+        removeUI(idtoremove,immediate = TRUE)
+      })
+    }
+  })
+  
+  
+  
+  #observe({
+    #output$bird_migration_densities <- renderUI({
+      #lapply(WFshapes()$NAME,function(x)mod_bird_densities_ui(x,"Goose"))
+    #})
+  #})
+  
+  
+  
+  
+  
+  # Control for adding wind farm parameters module to the UI based on user's selection -----------------------------------------------------------------
 
   observe({
     ## Use an Lapply to generate the UI for the list of selected wind farms
@@ -1281,6 +1527,10 @@ app_server <- function( input, output, session ) {
   
   
   
+  
+  
+
+
   #' --------------------------------------------------------------------------------------------------
   #  ---- Prepare & check input data for simulation, triggered when user pushes go        ----
   #' --------------------------------------------------------------------------------------------------
@@ -1823,15 +2073,15 @@ app_server <- function( input, output, session ) {
     )
     
     
-    #' model function expects data to be provided in csv files, so saving them out for now to avoid code inconsistencies 
-    #' Should change model function to expect data.frames instead of files once it's final version is established
+    # model function expects data to be provided in csv files, so saving them out for now to avoid code inconsistencies 
+    # Should change model function to expect data.frames instead of files once it's final version is established
     fwrite(rv$birdata_model, "data/BirdData.csv")
     fwrite(rv$turbineData_model, "data/TurbineData.csv")
     fwrite(windPowerData, paste0("data/windpower_", input$numInput_turbinePars_turbinePower, ".csv"))
     
     
-    #' save inputs to the user's downloadable folder - repeating the previous step (except the changes to the turbine data) makes 
-    #' code a bit inefficient, but the previous step should be temporary
+    # save inputs to the user's downloadable folder - repeating the previous step (except the changes to the turbine data) makes 
+    # code a bit inefficient, but the previous step should be temporary
     fwrite(rv$birdata_model, file.path(path2ShinyOut_Inputs, "BirdData.csv"))
     rv$turbineData_model %>% select(-c(RotorRadiusSD, HubHeightAddSD, BladeWidthSD)) %>% dplyr::rename(airGap = HubHeightAdd) %>%
       fwrite(., file = file.path(path2ShinyOut_Inputs, "TurbineData.csv"))
@@ -1855,14 +2105,14 @@ app_server <- function( input, output, session ) {
     })
     
     
-    #' callback functions to update progress on species.
+    # callback functions to update progress on species.
     updateProgress_Spec <- function(value = NULL, detail = NULL) {
       progress_Spec$set(value = value, detail = detail)
     }
     
     
-    #' callback functions to update progress on iterations. Each time updateProgress_Iter() is called, 
-    #' it moves the bar 1/nth of the total distance.
+    # callback functions to update progress on iterations. Each time updateProgress_Iter() is called, 
+    # it moves the bar 1/nth of the total distance.
     updateProgress_Iter <- function(value = NULL, detail = NULL) {
       progress_Iter$set(value = value, detail = detail)
     }
@@ -1933,9 +2183,9 @@ app_server <- function( input, output, session ) {
   
   
   
-  #' -----------------------------------------------------------------------
+  # -----------------------------------------------------------------------
   #  ----            Compute and display model outputs                  ----
-  #' -------------------------------------------------------+----------------
+  # -------------------------------------------------------+----------------
   
   # Arrange results data into a data.frame
   sCRM_outputDF <- eventReactive(rv$sCRM_output_ls, {
@@ -2134,9 +2384,9 @@ app_server <- function( input, output, session ) {
   
   
   
-  #' --------------------------------------------------------------------------------------------------------
+  # --------------------------------------------------------------------------------------------------------
   #  ----   Massage and relocate summaries of randomly generated parameter values for user's Download    ----
-  #' --------------------------------------------------------------------------------------------------------
+  # --------------------------------------------------------------------------------------------------------
   
   observeEvent(rv$sCRM_output_ls, {
     
@@ -2177,9 +2427,9 @@ app_server <- function( input, output, session ) {
   
   
   
-  #' ----------------------------------------------------------------
+  # ----------------------------------------------------------------
   #  ----              Download model outputs                    ----
-  #' ----------------------------------------------------------------
+  # ----------------------------------------------------------------
   
   output$dwnld_ModelOuts <- downloadHandler(
     filename = function() {
@@ -2200,9 +2450,9 @@ app_server <- function( input, output, session ) {
   
   
   
-  #' ---------------------------------------------------------
+  # ---------------------------------------------------------
   #  ----       Session's house-cleaning                  ----
-  #' ---------------------------------------------------------
+  # ---------------------------------------------------------
   
   # --- Delete temporary folders (& files) created during the current session
   onStop(function(){
@@ -2215,70 +2465,29 @@ app_server <- function( input, output, session ) {
   
   
   
-  #' ----------------------------------------------------------------
+  # ----------------------------------------------------------------
   #  ----              Miscellaneous  Stuff                    ----
-  #' ----------------------------------------------------------------
+  # ----------------------------------------------------------------
   
   # Version updates - describing latest developments/updates implemented in the app
   observeEvent(input$appvrsn, {
     showModal(
       modalDialog(size = "l",
                   title = h3("Release Notes"),
-                  h4("v2.3.2 - January, 2020"),
-                  p("Minor bug fixes and packrat added"),
+                  h4("v0.0.9 - July, 2021"),
+                  p("Added the bird features module"),
                   tags$ul(
                     tags$li(tags$b("Additions & Updates"), 
                             tags$ul(
-                              tags$li("Implemented (minor) fixes to address divergences in outputs between sCRM and the original Band model (refer to issue #13 in GitHub)"),
-                              tags$li("Packrat added to improve management of R package dependencies and version conflicts"),
-                              tags$li("Other fixes to tackle e.g. issue #18 in Github")
+                              tags$li("Changed over to a tab-based structure for the species features"),
+                              tags$li("Generated the module for creating species feature tabs"),
+                              tags$li("Changed colour scheme to teal - blue")
                             )),
                     tags$li(tags$b("To-Do List"),
                             tags$ul(
-                              tags$li("Allow user to choose a tag for the scenario under simulation, to be used as a prefix in the output file names"),
-                              tags$li("Add option to upload data into input tables (e.g. turbine's 'Monthly Operation' table)")
-                            ))
-                  ),
-                  h4("v2.3.1 - February, 2019"),
-                  p("Added user-assistance features and fixed issues raised since previous release"),
-                  tags$ul(
-                    tags$li(tags$b("Additions & Updates"), 
-                            tags$ul(
-                              tags$li("Consortium's logos added"),
-                              tags$li("Inclusion of default values for body length, wing span and flight speeds for most of the default species"),
-                              tags$li("Implemented facility to save and restore input parameter values, allowing user to recover previously saved app status e.g. if the app disconnects."),
-                              tags$li("Final check on missing values and data before proceeding to simulation. Simulation voided and warnings issued if key data absent"),
-                              tags$li("Bugs fixed, including: fault on re-ordering in plots of monthly bird densities; error due to previous maximum height of 300m in FHD data (addressed by padding FHD data with zeros from 300m to 500m)")
-                            )),
-                    tags$li(tags$b("To-Do List"),
-                            tags$ul(
-                              tags$li("Allow user to choose a tag for the scenario under simulation, to be used as a prefix in the output file names"),
-                              tags$li("Add option to upload data into input tables (e.g. turbine's 'Monthly Operation' table)")
-                            ))
-                  ),
-                  h4("v2.2.1 - March 20th, 2018"),
-                  p("Major release based on feedback and discussions with the steering group after the first release. The following lists are not exhaustive, i.e. only the most relevant changes mentioned"),
-                  tags$ul(
-                    tags$li(tags$b("Additions & Updates"), 
-                            tags$ul(
-                              tags$li("Wind farm's 'Target Power' replaced with 'Number of Turbines'"),
-                              tags$li("Turbine parameters 'Rotor Radius', 'Air Gap' and 'Maximum Blade Witdh' made fixed (i.e. stochasticity present in previous release was removed)"),
-                              tags$li("Turbine's 'Rotation Speed' and 'Blade Pitch' are now simulated from Truncated Normals (bounded at 0) by default. Also, bug found by MacArthur Green has been fixed, i.e. the model does not override this option in favour of a windpseed relationship"),
-                              tags$li("The option of simulating 'Rotation Speed' and 'Blade Pitch' in relation to 'Wind Speed' (now simulated from a Truncated Normal bounded at 0) was kept in case data from developers is made available"),
-                              tags$li("Biometric parameters 'Body Length', 'Wing Span' and 'Flight Speed' are now simulated as Truncated Normals bounded at 0"),
-                              tags$li("Biometric parameters 'Nocturnal Activity', 'Basic Avoidance', 'Extended Avoidance' and 'Proportion at CRH' are now simulated as Beta distributions"),
-                              tags$li("Implemented facility to upload user-defined bootstrap samples of flight heights distributions (FHD), either for listed species or new species"),
-                              tags$li("Added set of options to specify bird monthly densities: (a) Truncated Normal bounded at 0; (b) Reference points (min, max and percentiles) & (c) Random samples"),
-                              tags$li("Implemented on-the-fly validation feature for inputs sense-check, flagging up nonsensical values (e.g. negative SDs, decimal 'Number of Blades, etc)"),
-                              tags$li("Sampled parameter values are now included in the model output .zip file"),
-                              tags$li("Implemented an online user support facility (GitHub) for users to e.g. submit issues found access the User's manual")
-                            )),
-                    tags$li(tags$b("To-Do List"),
-                            tags$ul(
-                              tags$li("Add logos of Marine Scotland, HiDef & DMP"),
-                              tags$li("Implement Bookmark feature to save current app status, e.g. allowing chosen model inputs to be recycled for future simulations"),
-                              tags$li("Allow user to choose a tag for the scenario under simulation, to be used as a prefix in the output file names"),
-                              tags$li("Add option to upload data into input tables (e.g. turbine's 'Monthly Operation' table)")
+                              tags$li("Allow users to upload shapefile"),
+                              tags$li("Migratory bird maps to be generated and added"),
+                              tags$li("Species list to be finalized and added")
                             ))
                   ),
                   easyClose = TRUE

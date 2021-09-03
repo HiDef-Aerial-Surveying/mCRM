@@ -84,3 +84,35 @@
 
 
 
+#' Polygons of Migration corridors
+#'
+#' The polygons of the migration corridors for each species as per the BTO report. This is saved as a list and accessed
+#' by way of a call to the object.
+#'
+#' @format A list of sf polygons for all species in the database
+"all_polygons"
+
+
+#' Line samples of migration corridors
+#'
+#' 10,000 lines randomly generated inside of the migration corridors linking non-UK regions to UK regions
+#' to sample the site for possible migrating birds
+#'
+#' @format A list of sf polylines for all species in the database
+"all_lines"
+
+
+#' Species data with wingspans and lengths
+#'
+#' A dataframe with species names, wingspans and wing lengths
+#'
+#' @format A dataframe
+#' \describe{
+#'   \item{Voous}{Species Voous}
+#'   \item{Common}{Common English name of species}
+#'   \item{Scientific}{Scientific name of species}
+#'   \item{Length}{Mean length of species (cm)}
+#'   \item{Wingspan}{Mean wingspan of species (cm)}
+#' }
+"species_data"
+

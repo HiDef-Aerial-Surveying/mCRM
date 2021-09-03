@@ -168,7 +168,7 @@ mod_WindFarmFeats_ui <- function(id){
               br(),
               
               rHandsontableOutput(ns("hotInput_turbinePars_monthOps"), width = "100%"),
-              tags$style(type="text/css", "#hotInput_turbinePars_monthOps th {font-weight:bold;}"),
+              #tags$style(type="text/css", "#hotInput_turbinePars_monthOps th {font-weight:bold;}"),
               br(),
               br(),
               column(6,
