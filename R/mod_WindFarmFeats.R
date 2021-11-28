@@ -15,24 +15,24 @@ mod_WindFarmFeats_ui <- function(id){
   ns <- NS(idv)
   tagList(
     # --- Turbine features box
-    box(title = paste(id,"Features"), 
+    box(title = "Features", 
         width = 2, 
         status = "primary", 
         solidHeader = TRUE,
         collapsible = TRUE,
         collapsed = FALSE,
-        selectInput(ns("selectInput_builtin_turbine"),
-                    label = "Select turbine type",
-                    width = "85%",
-                    choices = c("Turbine 1" = "tb1", "Turbine 2" = "tb2", "Turbine 3" = "tb3"),
-                    selectize = TRUE
-        ),
+        #selectInput(ns("selectInput_builtin_turbine"),
+        #            label = "Select turbine type",
+        #            width = "85%",
+        #            choices = c("Turbine 1" = "tb1", "Turbine 2" = "tb2", "Turbine 3" = "tb3"),
+        #            selectize = TRUE
+        #),
         
         # --- Turbine Power
         numericInput(width = "85%", 
                      inputId = ns("numInput_windfarmPars_nTurbines"), 
                      label = label.help("Number of Turbines", ns("lbl_windfarmnTurbines")),
-                     value = startUpValues$windFarmPars$windfarmPars_nTurbines, min = 1, step = 1),
+                     value = 1, min = 1, step = 1),#startUpValues$windFarmPars$windfarmPars_nTurbines
         shinyBS::bsTooltip(id = ns("lbl_windfarmnTurbines"), 
                            title = paste0("Total number of turbines in the wind farm array.", 
                                           " Used in conjunction with turbine model to calculate the target power of the wind farm."),
@@ -43,7 +43,7 @@ mod_WindFarmFeats_ui <- function(id){
         numericInput(width = "85%", 
                      inputId = ns("numInput_windfarmPars_Latitude"), 
                      label = label.help("Latitude (deg)", ns("lbl_windfarmLatitude")), #"Latitude (deg)", 
-                     value = startUpValues$windFarmPars$windfarmPars_Latitude, min = -90, max = 90, step = 0.01),
+                     value = 1, min = -90, max = 90, step = 0.01),
         shinyBS::bsTooltip(id = ns("lbl_windfarmLatitude"), 
                            title = paste0("Latitude of the wind farm in decimal degrees. Used to calculate day length at the site over the year."),
                            options = list(container = "body"), placement = "right", trigger = "hover"),
@@ -57,34 +57,12 @@ mod_WindFarmFeats_ui <- function(id){
                            title = paste0("The wind farm width"),
                            options = list(container = "body"), placement = "right", trigger = "hover"),
         
-        # --- Tidal offset
+        
+        # --- % upwind flights
         numericInput(width = "85%", 
-                     inputId = ns("numInput_windfarmPars_tidalOffset"), 
-                     label = label.help("Tidal Offset (m)", ns("lbl_tidalOffset")), #"Tidal Offset (m)", 
-                     value = startUpValues$windFarmPars$tidalOffset, min = 0, step = 0.1),
-        shinyBS::bsTooltip(id = ns("lbl_tidalOffset"), 
-                           title = paste0("Tidal offset to correct for: (i) flight heights calculated in relation to mean sea-level",
-                                          " ; and (ii) turbine dimensions calculated in relation to Highest Astronomical Tide"),
-                           options = list(container = "body"), placement = "right", trigger = "hover"),
-        
-        
-        br(),
-        
-        shinyWidgets::knobInput(
-          inputId = ns("sldInput_windfarmPars_upWindDownWindProp"),
-          label = label.help("Upwind flights (%)", ns("lbl_upWindDownWindProp")),
-          value = 50, min = 0, max = 100, step = 1,
-          displayPrevious = TRUE,
-          thickness = 0.4,
-          lineCap = "default", #"round",
-          inputColor = "#333",
-          fgColor = "#6B8E23",
-          angleArc = 180,
-          angleOffset = 270, 
-          width = "80%"
-          # height = "140px"
-        ),
-        
+                     inputId = ns("numInput_windfarmPars_upWindDownWindProp"), 
+                     label = label.help("Upwind flights (%)", ns("lbl_upWindDownWindProp")), #"Tidal Offset (m)", 
+                     value = 50, min = 0,max=100, step = 1),
         shinyBS::bsTooltip(id = ns("lbl_upWindDownWindProp"), 
                            title = paste0("The percentage of upwind bird flights. Should be 50% unless direction of travel", 
                                           " is biased in a particular direction"),
@@ -93,7 +71,7 @@ mod_WindFarmFeats_ui <- function(id){
         ),
     
   
-    box(title = paste(id, "Turbine Parameters"), 
+    box(title = "Turbine Parameters", 
         width = 10, 
         status = "primary", 
         solidHeader = TRUE,
@@ -107,7 +85,7 @@ mod_WindFarmFeats_ui <- function(id){
                 numericInput(width = "60%",
                              inputId = ns("numInput_turbinePars_turbinePower"),
                              label = label.help("Turbine Model (MW)", ns("lbl_turbinePower")),
-                             value = startUpValues$turbinePars$turbPower, min = 1),
+                             value = 1, min = 1),
                 
                 # ---- Number of blades
                 numericInput(width = "60%",
@@ -120,12 +98,6 @@ mod_WindFarmFeats_ui <- function(id){
                              inputId = ns("numInput_turbinePars_rotRadius"),
                              label =  label.help("Rotor Radius (m)", ns("lbl_rotorRadius")),
                              value = startUpValues$turbinePars$rotorRadius, min = 1, step = 0.1),
-                
-                # ---- Air Gap
-                numericInput(width = "60%", 
-                             inputId = ns("numInput_turbinePars_airGap"),
-                             label =  label.help("Air Gap (m)", ns("lbl_turbineAirGap")),
-                             value = startUpValues$turbinePars$airGap, min = 1, step = 0.5),
                 
                 # Maximum blade width
                 numericInput(width = "60%", 
@@ -144,15 +116,39 @@ mod_WindFarmFeats_ui <- function(id){
           shinyBS::bsTooltip(id = ns("lbl_rotorRadius"),
                              title = paste0("The distance from the axis of rotation to blade tip"),
                              options = list(container = "body"), placement = "right", trigger = "hover"),
-          shinyBS::bsTooltip(id = ns("lbl_turbineAirGap"),
-                             title = paste0("Tip clearance height, i.e. the distance between the lowest rotor tip height", 
-                                            " and sealevel (measured as Highest Astronomical Tide)"),
-                             options = list(container = "body"), placement = "right", trigger = "hover"),
           shinyBS::bsTooltip(id = ns("lbl_maxBladeWdth"),
                              title = paste0("The maximum width of the rotor blade"),
                              options = list(container = "body"), placement = "right", trigger = "hover")
         ),
         
+        br(),
+          fluidRow(
+            column(6,
+                   box(width = 12,
+                       NormNumericInput(paramID = ns("turbinePars_rotnSpeed"), #specID = "",
+                                        varName = "Rotation (rpm)",
+                                        infoId = ns("lbl_rotSpeedProbDist"),
+                                        infoText = paste0("Turbine rotor speed (~ Truncated Normal with lower bound at 0). ", 
+                                                          "SD should be 0 unless suitable info on rotor speed variability is available"),
+                                        E_value = startUpValues$turbinePars$rotnSpeed_E, SD_value = startUpValues$turbinePars$rotnSpeed_SD),
+                       br(),
+                       verbatimTextOutput(ns("qtls_turbinePars_rotnSpeed"))
+                   )
+            ),
+            column(6,
+                   box(width = 12,
+                       NormNumericInput(paramID = ns("turbinePars_bladePitch"), #specID = "",
+                                        varName = "Pitch (deg)",
+                                        infoId = ns("lbl_bladePitchProbDist"),
+                                        infoText = paste0("Blade pitch, i.e. the angle of the blade relative to rotor plane (~Truncated Normal with lower bound at 0). ", 
+                                                          "SD should be 0 unless suitable info on pitch variability is available"),
+                                        E_value = startUpValues$turbinePars$bladePitch_E, SD_value = startUpValues$turbinePars$bladePitch_SD),
+                       br(),
+                       verbatimTextOutput(ns("qtls_turbinePars_bladePitch"))
+                   )
+            )
+          
+        ),
         br(),
         fluidRow(
           box(width = 12, 
@@ -178,84 +174,8 @@ mod_WindFarmFeats_ui <- function(id){
                      plotOutput(ns("plot_turbinePars_monthOps_downtime"), width = "100%", height = 250)
               )
           )
-        ),
-        br(),
-        fluidRow(
-          box(width = 12,
-              tags$b(HTML(paste0("Rotation Speed and Blade Pitch"))),
-              br(),
-              br(),
-              helpText("Choose between simulating rotor speed and pitch from probability distributions OR from a relationship with wind speed"),
-              fluidRow(
-                column(4, 
-                       radioGroupButtons(inputId = ns("radGrpInput_turbinePars_rotationAndPitchOption"),
-                                         individual = TRUE,
-                                         justified = TRUE, 
-                                         label = NULL,
-                                         choices = c("Probability distributions" = ns("probDist"),
-                                                     "Wind Speed relationship" = ns("windSpeedReltn")),
-                                         checkIcon = list(yes = tags$i(class = "fa fa-circle",
-                                                                       style = "color: steelblue"),
-                                                          no = tags$i(class = "fa fa-circle-o",
-                                                                      style = "color: steelblue")))
-                )),
-              br(),
-              br(),
-              conditionalPanel(
-                condition = "input.radGrpInput_turbinePars_rotationAndPitchOption == 'probDist'",
-                fluidRow(
-                  column(4,
-                         box(width = 12,
-                             NormNumericInput(paramID = ns("turbinePars_rotnSpeed"), specID = "",
-                                              varName = "Rotation (rpm)",
-                                              infoId = ns("lbl_rotSpeedProbDist"),
-                                              infoText = paste0("Turbine rotor speed (~ Truncated Normal with lower bound at 0). ", 
-                                                                "SD should be 0 unless suitable info on rotor speed variability is available"),
-                                              E_value = startUpValues$turbinePars$rotnSpeed_E, SD_value = startUpValues$turbinePars$rotnSpeed_SD),
-                             plotOutput(ns("plot_turbinePars_rotnSpeed"), width = 310, height = 200),
-                             br(),
-                             verbatimTextOutput(ns("qtls_turbinePars_rotnSpeed"))
-                         )
-                  ),
-                  column(4,
-                         box(width = 12,
-                             NormNumericInput(paramID = ns("turbinePars_bladePitch"), specID = "",
-                                              varName = "Pitch (deg)",
-                                              infoId = ns("lbl_bladePitchProbDist"),
-                                              infoText = paste0("Blade pitch, i.e. the angle of the blade relative to rotor plane (~Truncated Normal with lower bound at 0). ", 
-                                                                "SD should be 0 unless suitable info on pitch variability is available"),
-                                              E_value = startUpValues$turbinePars$bladePitch_E, SD_value = startUpValues$turbinePars$bladePitch_SD),
-                             plotOutput(ns("plot_turbinePars_bladePitch"), width = 310, height = 200),
-                             br(),
-                             verbatimTextOutput(ns("qtls_turbinePars_bladePitch"))
-                         )
-                  )
-                )
-              ),
-              conditionalPanel(
-                condition = "input.radGrpInput_turbinePars_rotationAndPitchOption == 'windSpeedReltn'",
-                fluidRow(
-                  column(4, 
-                         rHandsontableOutput(ns("hotInput_turbinePars_rotationVsWind"), width = "100%"),
-                         tags$style(type="text/css", "#hotInput_turbinePars_rotationVsWind th {font-weight:bold;}")
-                  ),
-                  column(4, 
-                         rHandsontableOutput(ns("hotInput_turbinePars_pitchVsWind"), width = "100%"),
-                         tags$style(type="text/css", "#hotInput_turbinePars_pitchVsWind th {font-weight:bold;}")
-                  ),
-                  column(4,
-                         NormNumericInput(paramID = ns("miscPars_windSpeed"), specID = "",
-                                          varName = "Wind Speed (m/s)",
-                                          infoId = ns("lbl_winSpeed"),
-                                          infoText = paste0("Wind speed (~Truncated Normal with lower bound at 0)"),
-                                          E_value = startUpValues$turbinePars$windSpeed_E, SD_value = startUpValues$turbinePars$windSpeed_SD),
-                         plotOutput(ns("plot_miscPars_windSpeed"), width = 310, height = 200),
-                         verbatimTextOutput(ns("qtls_miscPars_windSpeed"))
-                  )
-                )
-              )
-          )
         )
+        
     )
   )
 }
@@ -271,10 +191,32 @@ mod_WindFarmFeats_ui <- function(id){
 #' 
 
 mod_WindFarmFeats_server <- function(id, data){
-  id <- stringr::str_replace_all(id," ", "_")
+  nid <- id
+  nid <- stringr::str_replace_all(id,"_", " ")
   moduleServer(
     id,
     function(input,output,session){
+      
+      observe({
+        shp <- Scotwind_Merged[Scotwind_Merged$NAME == nid,]
+        nturb <- ifelse(shp$N_TURBINES==0,0.00001,shp$N_TURBINES)
+        pow <- shp$POWER_MW
+        updateNumericInput(inputId="numInput_turbinePars_turbinePower",value=floor(pow/nturb))
+      })
+      
+      
+      observe({
+        ## Calculate centroid latitude of wind farm and put in input
+        shp <- Scotwind_Merged[Scotwind_Merged$NAME == nid,]
+        latval <- round(mean(shp@bbox[2],shp@bbox[4]),1)
+        updateNumericInput(inputId="numInput_windfarmPars_Latitude",value=latval)
+      })
+      
+      observe({
+        ## Get the number of turbines and put into the tool
+        updateNumericInput(inputId = "numInput_windfarmPars_nTurbines",value=Scotwind_Merged$N_TURBINES[Scotwind_Merged$NAME == nid])
+      })
+      
       
       # --- Create input table for turbine monthly operation parameters
       output$hotInput_turbinePars_monthOps <- renderRHandsontable({

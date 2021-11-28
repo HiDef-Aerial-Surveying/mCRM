@@ -10,12 +10,11 @@
 #' @import leaflet
 #' @import tidyr
 #' @import tibble
+#' @import foreach
 #' @noRd
 #' 
 app_server <- function( input, output, session ) {
 
-  # List the first level callModules here
-  
   #' ----------------------------------------------------
   #  ----         setting session specifics          ----
   #' ----------------------------------------------------
@@ -69,46 +68,9 @@ app_server <- function( input, output, session ) {
   dir.create(path2Outputs_results, recursive = TRUE)
   
   
-  
-  
-  
-  #' -----------------------------------------------------------------------
-  #  ----      Dynamic UI builders based on user selected species       ----
-  #' -----------------------------------------------------------------------
-  
-  # ---- Sidebar menuSubItem builder for selected species
-  output$menuSubItems_species <- renderMenu({
-    
-    cSelSpec <- slctSpeciesTags()
-    
-    if(!is.null(cSelSpec)){
-      species_SubItemsList <- cSelSpec %>%
-        dplyr::select(species, specTabNames) %>%
-        dplyr::rename(text = species, tabName = specTabNames) %>%
-        pmap(menuSubItem, icon = icon("sliders"))
-    }else{
-      species_SubItemsList <- NULL
-    }
-    sidebarMenu(.list = species_SubItemsList)
-  })
-  
-  
-  
-  #' ---- Logic to pair-up with UI generation of species parameters tabs:
-  #' Get a first-time selected species, returning empty character if currently 
-  #' selected species have been previously selected
-  observe({
-    
-    selSpec <- input$selectSpecs
-    rv$addedSpec <- selSpec[!selSpec %in% prevSlctSpecs]
-    prevSlctSpecs <<- c(prevSlctSpecs, rv$addedSpec)
-    
-  })
-  
+  # Map display controls ----------------------------------------------------
 
-
-# Map display controls ----------------------------------------------------
-
+  ## Loads the base leaflet map with just the tiles
   output$map <- renderLeaflet({
     leaflet::leaflet() %>%
       leaflet::addProviderTiles(providers$Esri.OceanBasemap,
@@ -116,100 +78,56 @@ app_server <- function( input, output, session ) {
       setView(-4, 55, zoom = 5)
   })
   
-  
+  ## Stores the names of the Wind farms selected from the UI
   WFshapes <- reactive({
-    EMOD_OSWFs_WGS84_UK[EMOD_OSWFs_WGS84_UK$NAME %in% input$selectInput_builtin_wfList,]
+    Scotwind_Merged[Scotwind_Merged$NAME %in% input$selectInput_builtin_wfList,]
   })
   
+  ## Stores a vector of the windfarm shapes which is used to update the shapefiles visble
+  ## In the map after the button has been clicked
+  WFshapelist <- reactiveValues(wfs=vector())
 
-  observe({
-    
+  ## When the button has been clicked to update the windfarm tabs, we update the map
+  ## As well as update the tab list (appendTab function) and load in the windfarmfeats_ui module
+  ## The windfarmfeats server module is also called here
+  observeEvent(input$button_update_Windfarm_tabs, {
     cur.popup <- paste0("<strong>Name: </strong>", WFshapes()$NAME)
-    
     leaflet::leafletProxy("map",data=WFshapes()) %>% clearShapes() %>%
       addPolygons(weight = 1, fillColor = "red", popup=cur.popup, fillOpacity = 1) 
-    
+    if(length(WFshapelist$wfs) == 0){
+      lapply(WFshapes()$NAME,function(x) {
+        id_name <- stringr::str_replace_all(x," ","_")
+        appendTab("windfarm_Tabs",tabPanel(x,mod_WindFarmFeats_ui(id_name)))
+        mod_WindFarmFeats_server(id_name,data=rv)
+      })
+      WFshapelist$wfs <- WFshapes()$NAME
+    }else if(length(WFshapelist$wfs) > 0){
+      for(j in WFshapelist$wfs){
+        print(j)
+        if(j %!in% WFshapes()$NAME){
+          removeTab("windfarm_Tabs",j)
+        }
+      }
+      for(i in WFshapes()$NAME){
+        if(i %!in% WFshapelist$wfs){
+          id_name <- stringr::str_replace_all(i," ","_")
+          appendTab("windfarm_Tabs",tabPanel(i,mod_WindFarmFeats_ui(id_name)))
+          mod_WindFarmFeats_server(id_name,data  = rv)
+        }
+      }
+      WFshapelist$wfs <- WFshapes()$NAME
+    }
   })
   
   
-  
-
-# Migratory Map control ---------------------------------------------------
-
-  
-  
-  SpPoly <- reactive({
-    sppc <- "Anser_anser"
-    SpPoly <- all_polygons[[sppc]]
-    SpPoly <- sf::st_transform(SpPoly,4326)
-    
-  })
-  WFshapes <- reactive({
-    EMOD_OSWFs_WGS84_UK[EMOD_OSWFs_WGS84_UK$NAME %in% input$selectInput_builtin_wfList,]
-  })
-  
-  
-  
-  
-  output$MigMap <- renderLeaflet({
-    cur.popup <- paste0("<strong>Name: </strong>", WFshapes()$NAME)
-    leaflet::leaflet() %>%
-      leaflet::addProviderTiles(providers$Esri.OceanBasemap,
-                                options = leaflet::providerTileOptions(noWrap = TRUE)) %>%
-      setView(-4, 55, zoom = 5) %>%
-      addPolygons(data=WFshapes(),weight = 1, fillColor = "red", popup=cur.popup, fillOpacity = 1) %>%
-      addPolygons(data=SpPoly(),fillColor="green",fillOpacity=0.7)
-  })
-  
-  
-
-  observe({
-    cur.popup <- paste0("<strong>Name: </strong>", WFshapes()$NAME)
-    
-    leaflet::leafletProxy("MigMap",data=WFshapes()) %>% clearShapes() %>%
-      addPolygons(weight = 1, fillColor = "red", popup=cur.popup, fillOpacity = 1) %>%
-      addPolygons(data=SpPoly(),fillColor="green",fillOpacity=0.7)
-  })
-  
-  
-  
-  
-  
-  
-  
-  
-  # Include UI holding tab with widgets for a species parameters when species is selected for the first time
-  observeEvent(rv$addedSpec, {
-    
-    req(rv$addedSpec)
-    
-    walk(rv$addedSpec, function(x, specTags = slctSpeciesTags()){
-      
-      #browser()
-      
-      cSpecTags <- specTags %>% dplyr::filter(species == x)
-      
-      insertUI(
-        selector = "#tabItemsEnvelope",
-        where = "beforeEnd",
-        ui = selectSpecies_UITabBuilder(session = session,
-                                        specName = cSpecTags$species, 
-                                        tabName = cSpecTags$specTabNames, 
-                                        specLabel = cSpecTags$specLabel,
-                                        specStartVals = startUpValues$speciesPars[[cSpecTags$specLabel]]
-        )
-      )
-      
-    })
-  })
-  
-
  # Control for adding bird parameters module to the UI based on use --------
-  
+  ## Stores the species names from the input list selected in the UI
   BirdNames <- reactive({
     input$selectInput_builtin_speciesList
   })
   
+  ## Stores the species list names for updating the tab list when the user selects
+  ## different species
   birdspecieslist <- reactiveValues(birdspcs=vector())
   
   # This will add bird species tabs when the action button is clicked
@@ -218,14 +136,13 @@ app_server <- function( input, output, session ) {
     if(length(birdspecieslist$birdspcs) == 0){
       lapply(BirdNames(),function(x) {
         
-        id_name <- species_data$Scientific[which(species_data$Common == x)]
+        id_name <- defaultSpeciesValues$Scientific_name[which(defaultSpeciesValues$Common_name == x)] 
         id_name <- stringr::str_replace_all(id_name," ","_")
         
-        appendTab("specTabs",tabPanel(id_name,mod_bird_features_ui(id_name)))
+        appendTab("specTabs",tabPanel(x,mod_bird_features_ui(id_name)))
+        mod_bird_features_server(id_name,WFshapes())
         
       })
-      
-      
       birdspecieslist$birdspcs <- BirdNames()
     }else if(length(birdspecieslist$birdspcs) > 0){
       for(j in birdspecieslist$birdspcs){
@@ -235,10 +152,11 @@ app_server <- function( input, output, session ) {
       }
       for(i in BirdNames()){
         if(i %!in% birdspecieslist$birdspcs){
-          id_name <- species_data$Scientific[which(species_data$Common == i)]
+          id_name <- defaultSpeciesValues$Scientific_name[which(defaultSpeciesValues$Common_name == i)] 
           id_name <- stringr::str_replace_all(id_name," ","_")
           
           appendTab("specTabs",tabPanel(i,mod_bird_features_ui(id_name)))
+          mod_bird_features_server(id_name,WFshapes())
         }
       }
       birdspecieslist$birdspcs <- BirdNames()
@@ -258,323 +176,213 @@ app_server <- function( input, output, session ) {
     )
   })
   
-  #observe({
-    ## Use an Lapply to generate the UI for the list of selected wind farms
-    #output$birdData_placeholder <- renderUI({
-      
-    #})
-    ## Lapply through the server function as well, passing the reactive values as data
-    #lapply(WFshapes()$NAME,function(x) mod_WindFarmFeats_server(id = x, data  = rv))
-  #})
+
+# Generate scenarios server actions ---------------------------------------
+  ## For all birds selected, will access the list of inputs from the module 
+  ## into a data frame, which is then used to present as an R Hands on table on the
+  ## Front end UI
+  bird.data.rvs <- reactive({
+    
+    sapply(BirdNames(),
+           function(x){
+             
+             id_name <- defaultSpeciesValues$Scientific_name[which(defaultSpeciesValues$Common_name == x)]
+             id_name <- stringr::str_replace_all(id_name," ","_")
+             
+
+             data.frame(
+               #species = id_name,
+               flying = eval(parse(text=paste0("input$`",id_name,"-slctInput_biomPars_flType_tp`"))),
+               bdlenE = eval(parse(text=paste0("input$`numInput_",id_name,"-biomPars_bodyLt_E_`"))),
+               bdlenSD = eval(parse(text=paste0("input$`numInput_",id_name,"-biomPars_bodyLt_SD_`"))),
+               wnspnE = eval(parse(text=paste0("input$`numInput_",id_name,"-biomPars_wngSpan_E_`"))),
+               wnspnSD = eval(parse(text=paste0("input$`numInput_",id_name,"-biomPars_wngSpan_SD_`"))),
+               flSpdE = eval(parse(text=paste0("input$`numInput_",id_name,"-biomPars_flSpeed_E_`"))),
+               flSpdSD = eval(parse(text=paste0("input$`numInput_",id_name,"-biomPars_flSpeed_SD_`"))),
+               AvoidE = eval(parse(text=paste0("input$`numInput_",id_name,"-biomPars_basicAvoid_E_`"))),
+               AvoidSD = eval(parse(text=paste0("input$`numInput_",id_name,"-biomPars_basicAvoid_SD_`"))),
+               PCH = eval(parse(text=paste0("input$`",id_name,"-biomPars_CRHeight`"))),
+               BioGpop = eval(parse(text=paste0("input$`",id_name,"-biomPars_biogeographic_pop`"))),
+               BioGprop = eval(parse(text=paste0("input$`",id_name,"-biomPars_prop_uk`"))),
+               Totalpop = eval(parse(text=paste0("input$`",id_name,"-biomPars_uk_population`"))),
+               PreBM = eval(parse(text=paste0("input$`",id_name,"-switch_pre_breeding_migration`"))),
+               PostBM = eval(parse(text=paste0("input$`",id_name,"-switch_post_breeding_migration`"))),
+               OthBM = eval(parse(text=paste0("input$`",id_name,"-switch_other_migration`")))
+             )
+             
+             
+           },simplify=FALSE,USE.NAMES=TRUE)
+    
+  })
+  
+  ## As per the bird.data.rvs only for the wind farm data
+  wf.data.rvs <- reactive({
+    sapply(WFshapes()$NAME,
+           function(x){
+             #id_name <- species_data$Scientific[which(species_data$Common == x)]
+             x <- stringr::str_replace_all(x," ","_")
+             tt <- data.frame(
+               Latitude = eval(parse(text=paste0("input$`",x,"-numInput_windfarmPars_Latitude`"))),
+               wfWidth = eval(parse(text=paste0("input$`",x,"-numInput_windfarmPars_width`"))),
+               PropUpwind = eval(parse(text=paste0("input$`",x,"-numInput_windfarmPars_upWindDownWindProp`"))),
+               TPower = eval(parse(text=paste0("input$`",x,"-numInput_turbinePars_turbinePower`"))),
+               nBlades = eval(parse(text=paste0("input$`",x,"-numInput_turbinePars_numBlades`"))),
+               rRadius = eval(parse(text=paste0("input$`",x,"-numInput_turbinePars_rotRadius`"))),
+               bWidth = eval(parse(text=paste0("input$`",x,"-numInput_turbinePars_maxBladeWdth`"))),
+               RotnSpdE <- eval(parse(text=paste0("input$`numInput_",x,"-turbinePars_rotnSpeed_E_`"))),
+               RotnSpdSD <- eval(parse(text=paste0("input$`numInput_",x,"-turbinePars_rotnSpeed_SD_`"))),
+               BldPitchE <- eval(parse(text=paste0("input$`numInput_",x,"-turbinePars_bladePitch_E_`"))),
+               BldPitchSD <- eval(parse(text=paste0("input$`numInput_",x,"-turbinePars_bladePitch_SD_`")))
+             )
+             
+             winddatatable <- eval(parse(text=paste0(
+               "rhandsontable::hot_to_r(input$`",x,"-hotInput_turbinePars_monthOps`)"
+             )))
+             meanWA <- winddatatable[1,]
+             meanDT <- winddatatable[2,]
+             names(meanDT) <- paste0(month.abb," mean down time")
+             SDDT <- winddatatable[3,]
+             names(SDDT) <- paste0(month.abb," SD down time")
+             tt <- do.call("cbind",list(tt,meanWA,meanDT,SDDT))
+             
+             return(tt)
+             
+           },simplify=FALSE,USE.NAMES=TRUE)
+    
+  })
+
 
   
-  
-  
-  # Bird densities server actions --------------------------------------------
-  
-  
-  # Bird_RVs <- reactiveValues(
-  #   # Input if users will input their own densities or simulate from lines/polygons
-  #   man.or.sim = NULL,#input$radGrpInput_Densities_userinput_or_lines,
-  #   # Input if user will use built-in shapes or upload their own
-  #   defmig.or.custom = NULL,#input$radGrpInput_spshape_builtin_or_userinput,
-  #   # Densities of birds (birds / km2)
-  #   mig.dens = data.frame(windfarm=NULL,
-  #                         prebreed=NULL,prebreedSD=NULL,
-  #                         postbreed=NULL,postbreedSD=NULL,
-  #                         moult=NULL,moultSD=NULL
-  #                         ),
-    # Prebreeding migration switch T/F
-    #premigration = input$switch_pre_breeding_migration,
-    # Postbreeding migration switch T/F
-    #postmigration = input$switch_post_breeding_migration,
-    # Moult migration switch T/F
-    #moultmigration = input$switch_moult_migration
+  observeEvent(input$button_generate_scenarios  ,{
     
-    #)
-  
-  observeEvent(input$radGrpInput_Densities_userinput_or_lines,{
-    if(input$radGrpInput_Densities_userinput_or_lines == "simulateDensities"){
-      output$spShape_builtin_or_userinput_radio <- renderUI(
-        radioGroupButtons(inputId = "radGrpInput_spshape_builtin_or_userinput",
-                          individual = TRUE,
-                          justified = TRUE, 
-                          label = NULL,
-                          choices = c("Default migration routes" = "existMigration",
-                                      "Custom migration routes" = "customMigration"),
-                          checkIcon = list(yes = tags$i(class = "fa fa-circle",
-                                                        style = "color: steelblue"),
-                                           no = tags$i(class = "fa fa-circle-o",
-                                                       style = "color: steelblue"))),
-      )
-    }else if(input$radGrpInput_Densities_userinput_or_lines == "manualDensities"){
-      removeUI("#radGrpInput_spshape_builtin_or_userinput",immediate = TRUE)
+    BirdNames <- BirdNames()
+    WFNames <- WFshapes()$NAME
+    
+    bird_scenario_table <- tibble(Species = BirdNames)
+    
+    
+    bird_scenario_table <- foreach(i=1:nrow(bird_scenario_table),.combine='rbind') %do% {
+      xx <- cbind(bird_scenario_table[i,],bird.data.rvs()[[bird_scenario_table$Species[i]]])
+      if(xx$PreBM == TRUE){
+        xx$PreBM <- defaultSpeciesValues$Pre_breed_mig_months[defaultSpeciesValues$Common_name == xx$Species]
+      }else{
+        xx$PreBM <- "NA" 
+      }
+      if(xx$PostBM == TRUE){
+        xx$PostBM <- defaultSpeciesValues$Post_breed_mig_months[defaultSpeciesValues$Common_name == xx$Species]
+      }else{
+        xx$PostBM <- "NA" 
+      }
+      if(xx$OthBM == TRUE){
+        xx$OthBM <- defaultSpeciesValues$Other_mig_months[defaultSpeciesValues$Common_name == xx$Species]
+      }else{
+        xx$OthBM <- "NA" 
+      }
+      return(xx)
     }
-  })
-  
-  ### Observe the pre breeding switch - if it's turned on, create the UI for the bird densities
-  observe({
-    output$BreedingDensities <- renderUI({
-      lapply(WFshapes()$NAME,function(x){
-        fluidRow(
-          column(2,
-                 p(x)
-                 ),
-          conditionalPanel(condition="input.switch_pre_breeding_migration == true",
-                           column(3,
-                                  mod_bird_densities_ui(x,"Goose","Pre breeding")
-                                  )
-          ),
-          conditionalPanel(condition="input.switch_post_breeding_migration == true",
-                           column(3,
-                                  mod_bird_densities_ui(x,"Goose","Post breeding")
-                           )
-          ),
-          conditionalPanel(condition="input.switch_other_migration == true",
-                           column(3,
-                                  mod_bird_densities_ui(x,"Goose","Other")
-                           )
-          )
-        )
+    #browser()
+    
+    output$hotInput_output_bird_scenarios <- renderRHandsontable(
+      
+      bird_scenario_table %>%
+        rhandsontable(rowHeaders=NULL, colHeaders = c("Species",  #"Windfarm",
+                                                      "Flight","Body Length",
+                                                      "Body Length SD", "Wingspan", "Wingspan SD",
+                                                      "Flight speed", "Flight speed SD",
+                                                      "Avoidance", "Avoidance SD", "PCH","Biogeographic population",
+                                                      "Proportion in UK", "Total population in UK", 
+                                                      "Pre-breeding migration","Post-breeding migration",
+                                                      "Other migration")) %>%
+        hot_cols() %>%
+        hot_table(highlightCol = TRUE, highlightRow = TRUE) %>%
+        hot_context_menu(allowRowEdit = TRUE, allowColEdit = FALSE)
+      
+    )
+    
+    
+    
+    wind_scenario_table <- tibble(WindFarm = WFNames)
+    
+    wind_scenario_table <- foreach(i=1:nrow(wind_scenario_table),.combine='rbind') %do% {
+      xx <- cbind(wind_scenario_table[i,],wf.data.rvs()[[wind_scenario_table$WindFarm[i]]])
+      return(xx)
+    }
+    
+    #browser()
+    output$hotInput_output_wf_scenarios <- renderRHandsontable(
+      
+      wind_scenario_table %>%
+        rhandsontable(rowHeaders=NULL, colHeaders = c("Wind farm","Latitude","Width","Proportion upwind flight",
+                                                      "Turbine power","Number of blades",
+                                                      "Rotor radius", "Blade width",
+                                                      "Rotation Speed", "Rotation Speed SD", "Blade Pitch", "Blade Pitch SD",
+                                                      paste0(month.abb," wind available"),paste0(month.abb," mean downtime"),
+                                                      paste0(month.abb," SD downtime"))) %>%
+        hot_cols() %>%
+        hot_table(highlightCol = TRUE, highlightRow = TRUE) %>%
+        hot_context_menu(allowRowEdit = TRUE, allowColEdit = FALSE)
+      
+    )
+    
+    #browser()
+    ### 10000 lines, 2000 samples with 500 bootstraps from sensitivity analysis Sept 2021
+    ### This samples each windfarm x species combination to generation populations
+    
+    boot.iters <- 100
+    samplesize <- 2000
+    
+    WFshapes <- as(WFshapes(), "sf")
+    WFshapes <- sf::st_transform(WFshapes,sf::st_crs(all_lines$batgo))
+    
+    
+    Population_estimates <- expand.grid(WFshapes()$NAME,BirdNames)
+    names(Population_estimates) <- c("Wind farm", "Species")
+    Population_estimates$Estimate <- NA
+    Population_estimates$EstimateSD <- NA
+    
+    
+    
+    withProgress(message = "Generating population estimates",value=0,{
+      for(k in 1:nrow(Population_estimates)){
+        incProgress(1/nrow(Population_estimates),detail=paste("running", Population_estimates$Species[k], "in", Population_estimates$`Wind farm`[k] ))
+        Specnm <- stringr::str_replace_all(defaultSpeciesValues$Scientific_name[defaultSpeciesValues$Common_name == Population_estimates$Species[k]]," ","_")
+        btonm <- stringr::str_replace_all(defaultSpeciesValues$Sp_code[defaultSpeciesValues$Common_name == Population_estimates$Species[k]]," ","_")
+        speclines <- eval(parse(text=paste0("all_lines$",btonm)))
+        ## Population is multiplied by proportion in UK waters
+        popSizemn <- bird.data.rvs()[Population_estimates$Species[k]][[1]]$Totalpop
+          #defaultSpeciesValues$biogeographic_pop[defaultSpeciesValues$Common_name == Population_estimates$Species[k]] * defaultSpeciesValues$prop_uk_waters
+        #popSizesd <- species_data$PopulationSizeSD[defaultSpeciesValues$Common_name == Population_estimates$Species[k]]
+        Estimates <- vector(length=boot.iters)
         
-      })
-      # fluidRow(
-      #   column(2,
-      #          uiOutput("WF_names")
-      #   )
-      #   column(3,
-      #          uiOutput("pre_breed_densities")
-      #   ),
-      #   column(3,
-      #          uiOutput("post_breed_densities")
-      #   ),
-      #   column(3,
-      #          uiOutput("other_densities")
-      #   )  
-      # )
-    })
-  })
-  
-  
-  
-  ### Observe the post breeding switch - if it's turned on, create the UI for the bird densities
-  observeEvent(input$switch_post_breeding_migration,{
-    if(input$switch_post_breeding_migration == TRUE){
-      output$bird_migration_densities <- renderUI({
-        lapply(WFshapes()$NAME,function(x){
-          mod_bird_densities_ui(x,"Goose","Post breeding")
-          
+        withProgress(message = "bootstrapping", value=0, {
+          for(j in 1:boot.iters){
+            incProgress(1/boot.iters)
+            PopVal <- popSizemn#rnorm(1,popSizemn,popSizesd)
+            Estimates[j] <- ceiling(length(GetSampleProp(speclines,samplesize,WFshapes[Population_estimates$`Wind farm`[k],]))/samplesize * PopVal)
+            
+          }
         })
-      })  
-    }else if(input$switch_post_breeding_migration == FALSE){
-      lapply(WFshapes()$NAME,function(x){
-        idtoremove <- paste(x,"Goose","Post breeding")
-        idtoremove <- stringr::str_replace_all(idtoremove," ","_")
-        idtoremove <- stringr::str_replace_all(idtoremove,"-","_")
-        idtoremove <- paste0("#",idtoremove,"-counts")
-        removeUI(idtoremove,immediate = TRUE)
-      })
-    }
-  })
-  
-  ### Observe the other migration switch - if it's turned on, create the UI for the bird densities
-  observeEvent(input$switch_other_migration,{
-    if(input$switch_other_migration == TRUE){
-      output$bird_migration_densities <- renderUI({
-        lapply(WFshapes()$NAME,function(x){
-          mod_bird_densities_ui(x,"Goose","Other")
-        })
-      })  
-    }else if(input$switch_other_migration == FALSE){
-      lapply(WFshapes()$NAME,function(x){
-        idtoremove <- paste(x,"Goose","Other")
-        idtoremove <- stringr::str_replace_all(idtoremove," ","_")
-        idtoremove <- stringr::str_replace_all(idtoremove,"-","_")
-        idtoremove <- paste0("#",idtoremove,"-counts")
-        removeUI(idtoremove,immediate = TRUE)
-      })
-    }
-  })
-  
-  
-  
-  #observe({
-    #output$bird_migration_densities <- renderUI({
-      #lapply(WFshapes()$NAME,function(x)mod_bird_densities_ui(x,"Goose"))
-    #})
-  #})
-  
-  
-  
-  
-  
-  # Control for adding wind farm parameters module to the UI based on user's selection -----------------------------------------------------------------
-
-  observe({
-    ## Use an Lapply to generate the UI for the list of selected wind farms
-    output$windfarm_placeholder <- renderUI({
-      lapply(WFshapes()$NAME,function(x)fluidRow(mod_WindFarmFeats_ui(x)))
+        Population_estimates$Estimate[k] <- ceiling(mean(Estimates,na.rm=TRUE))
+        Population_estimates$EstimateSD[k] <- ceiling(sd(Estimates,na.rm=TRUE))
+        
+      }
     })
-    ## Lapply through the server function as well, passing the reactive values as data
-    lapply(WFshapes()$NAME,function(x) mod_WindFarmFeats_server(id = x, data  = rv))
+    
+    output$hotInput_output_population_scenarios <- renderRHandsontable(
+      
+      Population_estimates %>%
+        rhandsontable(rowHeaders=NULL, colHeaders = c("Wind farm","Species", "Population estimate","Population estimate (SD)")) %>%
+        hot_cols() %>%
+        hot_table(highlightCol = TRUE, highlightRow = TRUE) %>%
+        hot_context_menu(allowRowEdit = TRUE, allowColEdit = FALSE)
+      
+    )
+    
     
   })
+  
   
 
-  # Add bsTooltips for pop-ups with info on biometric parameters as new species are selected/added - needs to be added a-posteriori
-  observeEvent(rv$addedSpec,{
-    
-    req(rv$addedSpec)
-    
-    walk(rv$addedSpec, function(x, slctSpecies = slctSpeciesTags()){
-      
-      cSpecTags <- slctSpecies %>% dplyr::filter(species == x)
-      outTag <- paste0("BiomBStoolTips_", cSpecTags$specLabel)
-      
-      output[[outTag]] <- renderUI({
-        
-        tagList(
-          bsTooltip(id = paste0("lbl_bodyLt_", cSpecTags$specLabel),
-                    title = paste0("Bird body length (~ Truncated Normal with lower bound at 0)"),
-                    options = list(container = "body"),
-                    placement = "right", trigger = "hover"),
-          
-          bsTooltip(id = paste0("lbl_flType_", cSpecTags$specLabel),
-                    title = paste0("Predominant type of flight"),
-                    options = list(container = "body"),
-                    placement = "right", trigger = "hover"),
-          
-          bsTooltip(id = paste0("lbl_wngSpan_", cSpecTags$specLabel),
-                    title = paste0("Bird wing span (~ Truncated Normal with lower bound at 0)"),
-                    options = list(container = "body"),
-                    placement = "right", trigger = "hover"),
-          
-          bsTooltip(id = paste0("lbl_flSpeed_", cSpecTags$specLabel),
-                    title = paste0("Flight Speed (~ Truncated Normal with lower bound at 0)"),
-                    options = list(container = "body"),
-                    placement = "right", trigger = "hover"),
-          
-          bsTooltip(id = paste0("lbl_noctAct_", cSpecTags$specLabel),
-                    title = paste0("Proportion (0-1) of nocturnal", 
-                                   " activity (~ Beta)"),
-                    options = list(container = "body"),
-                    placement = "right", trigger = "hover"),
-          
-          bsTooltip(id = paste0("lbl_CRHeight_", cSpecTags$specLabel),
-                    title = paste0("Proportion (0-1) at colision risk height (~ Beta). Required for the basic model (option 1)"),
-                    options = list(container = "body"),
-                    placement = "right", trigger = "hover"),
-          
-          bsTooltip(id = paste0("lbl_basicAvoid_", cSpecTags$specLabel),
-                    title = paste0("The probability (0-1) that a bird on a collision course with a turbine will take evading", 
-                                   " action to avoid collision (~ Beta). Required for the basic model (option 1)"),
-                    options = list(container = "body"),
-                    placement = "right", trigger = "hover"),
-          
-          bsTooltip(id = paste0("lbl_extAvoid_", cSpecTags$specLabel),
-                    title = paste0("The probability (0-1) that a bird on a collision course with a turbine will take evading", 
-                                   " action to avoid collision (~ Beta). Required for the extended model (option 3)"),
-                    options = list(container = "body"),
-                    placement = "right", trigger = "hover"),
-          
-          bsTooltip(id = paste0("lbl_monthOPs_", cSpecTags$specLabel),
-                    title = paste0("The number of birds in flight during daytime per km2 in each month"),
-                    options = list(container = "body"),
-                    placement = "right", trigger = "hover"),
-          
-          bsTooltip(id = paste0("lbl_FHD_", cSpecTags$specLabel),
-                    title = paste0("Bootstrap samples of the proportion of birds flying within 1m height bands, between 1m and 500m. Required for model Options 2 & 3."),
-                    options = list(container = "body"),
-                    placement = "right", trigger = "hover")
-        )
-      })
-    })
-  })
-  
-  
-  # --- render UI with upload button for User's FHD data - needs to be done via renderUI for tipify to work - fussy!!!!
-  observeEvent(rv$addedSpec, {
-    
-    walk(rv$addedSpec, function(x){
-      
-      specLabel <- slctSpeciesTags() %>% dplyr::filter(species == x) %>% dplyr::pull(specLabel) #gsub("\\s|-", "_", x)
-      uiTag <- paste0("renderUI_uploadUserFHD_", specLabel)
-      
-      output[[uiTag]] <- renderUI({
-        
-        div(
-          column(4,
-                 tipify(      
-                   fileInput(inputId = paste0("upldInput_FHD_userDt_", specLabel),
-                             label = "Upload File",
-                             multiple = FALSE,
-                             accept = c("text/csv",
-                                        "text/comma-separated-values,text/plain",
-                                        ".csv")),
-                   title = "Model expects dataset with the first column comprising 1m height bands and remaining columns with bootstrap samples of the species FHD. Please download & use the adjacent template.",
-                   placement = "left", trigger = "hover", options = list(container = "body")
-                 )
-          ),
-          column(1,
-                 style = "margin-top: 25px; margin-left: -10px",
-                 downloadButton(outputId = paste0("dwnld_template_FHD_", specLabel), label = NULL, class = "butt"),
-                 tags$head(tags$style(".butt{background-color:#4570a5;
-                                  color: #efecec}
-                                  .butt:hover{
-                                  background-color:#4570a5;
-                                  color: #efecec}"
-                 ))
-          ),
-          
-          bsTooltip(id = paste0("dwnld_template_FHD_", specLabel),
-                    title = "Template dataset. Fill in, save locally and upload on the adjacent field",
-                    options = list(container = "body"),
-                    placement = "right", trigger = "hover")
-        )
-      })  
-    })
-  })
-  
-  
-  # --- render UI with upload buttons for user's reference points AND samples of monthly densities - needs to be done via renderUI for tipify to work - fussy!!!!
-  observeEvent(rv$addedSpec, {
-    
-    walk(rv$addedSpec, function(x){
-      
-      specLabel <- slctSpeciesTags() %>% dplyr::filter(species == x) %>% dplyr::pull(specLabel) #gsub(" ", "_", x)
-      
-      # upload button and template for distribution reference points for monthly densities
-      uiTag_summ <- paste0("renderUI_userUpload_monthDens_summaries_", specLabel)
-      
-      output[[uiTag_summ]] <- renderUI({
-        
-        divUI_monthDens_PctlsAndSample_DownButtons(
-          introText = paste0("Provide reference points of the distributions of monthly densities of ", x), 
-          fileInputId = paste0("upldInput_monthDens_userDt_summaries_", specLabel), 
-          fileInputPopUpText = "Data with reference points of distributions of monthly bird densities. Provide at least Min, 2.5th, 50th, 97.5th percentiles & Max (blank cells for no data). Please download & use the adjacent template.",
-          downButtOutputId = paste0("dwnld_template_monthDens_summaries_", specLabel))
-        
-      })
-      
-      # upload button and template for samples for monthly densities
-      uiTag_sample <- paste0("renderUI_userUpload_monthDens_samples_", specLabel)
-      
-      output[[uiTag_sample]] <- renderUI({
-        
-        divUI_monthDens_PctlsAndSample_DownButtons(
-          introText = paste0("Provide random samples from the distributions of monthly densities of ", x), 
-          fileInputId = paste0("upldInput_monthDens_userDt_samples_", specLabel), #x), 
-          fileInputPopUpText = "Data with random samples from distributions of monthly bird densities. Provide at least 1000 draws. Please download & use the adjacent template.",
-          downButtOutputId = paste0("dwnld_template_monthDens_samples_", specLabel))
-      })
-      
-    })
-    
-  })
-  
-  
-  
-  
   # --- render UI section for model outputs dynamically, according to the selected species.
   output$simResults_UI <- renderUI({
     
@@ -600,391 +408,6 @@ app_server <- function( input, output, session ) {
   
   
   
-  
-  
-  
-  #' -----------------------------------------------------------------
-  #  ----                  Inputs Management                      ----
-  #' -----------------------------------------------------------------
-  
-  # --- Store selected species
-  slctSpeciesTags <- reactive({
-    
-    cSelSpec <- input$selectSpecs
-    
-    if(!is.null(cSelSpec)){
-      tibble(species = input$selectSpecs) %>%
-        mutate(specLabel = gsub("\\s|-", "_", species),
-               specTabNames = paste0("tab_SpecPars_", specLabel)) 
-    }else{
-      return(NULL)
-    }
-  })
-  
-  
-  #' --- Store current input values of biometric hyperparameters (per species), flight dists inputs 
-  #' and monthly densities in reactiveValues
-  observeEvent(reactiveValuesToList(input), {
-    
-    #browser()
-    
-    RVs_inputs_ls <- reactiveValuesToList(input)
-    
-    # Biometric hyperparameters
-    rv$biomParsInputs_ls <- RVs_inputs_ls[grep("biomPars", names(RVs_inputs_ls))]
-    
-    # Monthly density hyperparameters
-    rv$birdDensParsInputs_ls <- map(RVs_inputs_ls[grep("hotInput_birdDensPars_tnorm", names(RVs_inputs_ls))], hot_to_r)
-    
-    # user uploaded monthly densities reference points file location
-    rv$mthDens_userDtSumm_loc <- RVs_inputs_ls[grep("upldInput_monthDens_userDt_summaries_", names(RVs_inputs_ls))]
-    
-    # user uploaded monthly densities random samples file location 
-    rv$mthDens_userDtSample_loc <- RVs_inputs_ls[grep("upldInput_monthDens_userDt_samples_", names(RVs_inputs_ls))]
-    
-    # User options for monthly density data 
-    rv$mthDens_userOptions <- RVs_inputs_ls[grep("slctInput_userOpts_monthDens_sampler_", names(RVs_inputs_ls))]
-    
-    # Flight heigth distributions locations
-    rv$FlgtHghDstInputs_loc <- RVs_inputs_ls[grep("FHD_userDt_", names(RVs_inputs_ls))]
-    
-  })
-  
-  
-  
-  # --- Call and store flight height distributions of selected species in elements of a list
-  flgtHghDstInputs_ls <- eventReactive(rv$FlgtHghDstInputs_loc, {
-    
-    req(length(rv$FlgtHghDstInputs_loc)>0)
-    
-    # input list elements of fileInputs are NULL until associate file is uploaded
-    # Get rid of null elements (i.e. when a species has been selected but file hasn't been uploaded)
-    FHDInputs_locations_ls_uploaded <- discard(rv$FlgtHghDstInputs_loc, is.null)
-    
-    req(length(FHDInputs_locations_ls_uploaded)>0)
-    
-    flgtHghDstInputs_ls <- FHDInputs_locations_ls_uploaded %>%
-      map(~fread(.$datapath))  # returns a list with each element holding the uploaded flight height distribution data for the selected species
-    
-    return(flgtHghDstInputs_ls)
-    
-  })
-  
-  
-  
-  # --- Call and store User's data for monthly densities reference points
-  monthDens_userDt_summs_ls <- eventReactive(rv$mthDens_userDtSumm_loc, {
-    
-    req(length(rv$mthDens_userDtSumm_loc) > 0)
-    
-    # Get rid of null elements (i.e. when a species has been selected but file hasn't been uploaded)
-    uploadedLocations_ls <- discard(rv$mthDens_userDtSumm_loc, is.null)
-    
-    req(length(uploadedLocations_ls) > 0)
-    
-    uploadedData_ls <- uploadedLocations_ls %>%
-      map(~read.csv(.$datapath, header = TRUE))  # returns a list with each element holding the uploaded data for the selected species
-    
-    return(uploadedData_ls)
-  })
-  
-  
-  
-  # --- Call and store User's data for monthly densities reference points
-  monthDens_userDt_sample_ls <- eventReactive(rv$mthDens_userDtSample_loc, {
-    
-    req(length(rv$mthDens_userDtSample_loc)>0)
-    
-    # Get rid of null elements (i.e. when a species has been selected but file hasn't been uploaded)
-    uploadedLocations_ls <- discard(rv$mthDens_userDtSample_loc, is.null)
-    
-    req(length(uploadedLocations_ls) > 0)
-    
-    uploadedData_ls <- uploadedLocations_ls %>%
-      map(~read.csv(.$datapath, header = TRUE))  # returns a list with each element holding the uploaded data for the selected species
-    
-    return(uploadedData_ls)
-  })
-  
-  
-  
-
-  
-  # --- Create input table for turbine rotation speed vs windspeed relationship
-  output$hotInput_turbinePars_rotationVsWind <- renderRHandsontable({
-    
-    rv$rotationVsWind_df %>%
-      dplyr::bind_rows(data.frame(windSpeed = NA, rotationSpeed=NA)) %>%
-      rhandsontable(rowHeaders=NULL, colHeaders = c("Wind speed (m/s)", "Rotation speed (rpm)")) %>%
-      hot_cols(colWidths = 150) %>%
-      hot_table(highlightCol = TRUE, highlightRow = TRUE) %>%
-      hot_context_menu(allowRowEdit = TRUE, allowColEdit = FALSE)
-  })
-  
-  
-  
-  # --- Create input table for turbine rotation speed vs windspeed relationship
-  output$hotInput_turbinePars_pitchVsWind <- renderRHandsontable({
-    
-    rv$pitchVsWind_df %>%
-      dplyr::bind_rows(data.frame(windSpeed = NA, bladePitch=NA)) %>%
-      rhandsontable(rowHeaders=NULL, colHeaders = c("Wind speed (m/s)", "Blade Pitch (deg)")) %>%
-      hot_cols(colWidths = 150) %>%
-      hot_table(highlightCol = TRUE, highlightRow = TRUE) %>%
-      hot_context_menu(allowRowEdit = TRUE, allowColEdit = FALSE)
-  })
-  
-  
-  
-  
-  
-  # --- Create input table for bird monthly densities as each species is added
-  observe({
-    
-    req(rv$addedSpec)
-    
-    walk(rv$addedSpec, function(x, slctSpecTags = isolate(slctSpeciesTags()), startSpecMonthDens = isolate(rv$startSpecMonthDens_df)){
-      
-      cSpecTags <- slctSpecTags %>% dplyr::filter(species == x)
-      
-      # input table for truncated normal parameters
-      hotTag_truncNorm <- paste0("hotInput_birdDensPars_tnorm_", cSpecTags$specLabel)  
-      cStartSpecMonthDens <- startSpecMonthDens[[cSpecTags$specLabel]]
-      
-      output[[hotTag_truncNorm]] <- renderRHandsontable({
-        
-        if(is_empty(cStartSpecMonthDens)){
-          cStartSpecMonthDens <- data.frame(meanDensity = rep(1, 12), sdDensity = rep(0.001, 12))
-        }
-        
-        data.frame(cStartSpecMonthDens) %>%
-          mutate(month = month.name) %>%
-          column_to_rownames(var = "month") %>%
-          t() %>%
-          rhandsontable(rowHeaderWidth = 160, 
-                        rowHeaders = c("Mean birds/km^2", "SD of birds/km^2")) %>%
-          hot_cols(colWidths = 90, 
-                   renderer = "function (instance, td, row, col, prop, value, cellProperties) {
-                   Handsontable.renderers.NumericRenderer.apply(this, arguments);
-                   if (value == null || value.length === 0) {
-                   td.style.background = 'pink';
-                   }
-      }") %>%
-          hot_table(highlightCol = TRUE, highlightRow = TRUE) %>%
-          hot_context_menu(allowRowEdit = FALSE, allowColEdit = FALSE)
-        
-      })
-      
-    })
-  })
-  
-  
-  
-  
-  #' -------------------------------------------------------------
-  #  ----     Storing and restoring input values              ----
-  #' -------------------------------------------------------------
-  #'
-  #' NOTE: data is stored locally in the user's browser
-  
-  # --- Storing currently selected input values when user clicks store
-  observeEvent(input$saveInputs_btt, ignoreInit = TRUE, {
-    
-    # species
-    updateStore(session, "selectSpecs", input$selectSpecs)
-    
-    # windfarm and turbine parameters - non-tabulated
-    stringr::str_subset(names(input), pattern = "(?<!hotInput_)turbinePars|windfarmPars|windSpeed") %>%
-      walk(function(x){
-        updateStore(session, x, input[[x]])
-      })
-    
-    
-    # Species-specific parameters - non-tabulated
-    stringr::str_subset(names(input), pattern = "biomPars|slctInput_userOpts_") %>%
-      walk(function(x){
-        updateStore(session, x, input[[x]])
-      })
-    
-    
-    # All rHandsontables (i.e. monthly operations, pitch/bladeSpeed vs WindSpeed & monthly densities)
-    stringr::str_subset(names(input), pattern = "hotInput_") %>%
-      walk(function(x){
-        
-        #browser()
-        
-        input[[x]]$data %>%   # rHandsontables input objects return data in a list, on a by-row conversion
-          flatten %>%
-          map(function(z){ ifelse(is.null(z), "", z)}) %>%  # required to solve issue with NULLs generated when storing from (restored) empty table cells, which would cause errors
-          unlist %>%
-          updateStore(session, x, .)
-        
-        #updateStore(session, x, input[[x]]$data)
-      })
-    
-    
-    # show modal confirming inputs have been stored
-    sendSweetAlert(session = session, title = "Parameters stored!", 
-                   text = "Current parameter values stored locally", 
-                   type = "success")
-  })
-  
-  
-  
-  
-  # --- Restoring latest saved input values - Stage 1: selected species, windfarm and turbine parameters
-  #
-  observeEvent(input$restoreInputs_btt, {
-    
-    #browser()
-    
-    if(length(input$store)>0){
-      
-      # ---- Selected species ---- #
-      updateSelectizeInput(session, inputId = "selectSpecs", selected = input$store$selectSpecs, 
-                           choices = unique(c(species, input$store$selectSpecs)))
-      
-      
-      # -----  Windfarm and turbine parameters ---- #
-      # - numeric inputs
-      stringr::str_subset(names(input), pattern = "numInput_turbinePars|numInput_windfarmPars|numInput_miscPars_windSpeed") %>%
-        walk(function(x){
-          updateNumericInput(session, inputId = x, value = ifelse(is.null(input$store[[x]]), NA, input$store[[x]]))
-        })
-      
-      # - knob inputs
-      updateKnobInput(session, inputId = "sldInput_windfarmPars_upWindDownWindProp", 
-                      value = input$store$sldInput_windfarmPars_upWindDownWindProp)
-      
-      
-      # - Handsontable inputs
-      rv$turbinePars_monthOps_df[1, 1] <- NA  # trick required to restore from unsaved changes (issue specific to handsonTables <-> rv's)
-      rv$turbinePars_monthOps_df <- data.frame(matrix(as.numeric(input$store$hotInput_turbinePars_monthOp), nrow = 3, ncol = 12, 
-                                                      dimnames = dimnames(rv$turbinePars_monthOps_df), byrow = TRUE))
-      
-      
-      rv$rotationVsWind_df[1, 1] <- NA       # trick required to restore from unsaved changes (issue specific to handsonTables <-> rv's)
-      rv$rotationVsWind_df <- input$store$hotInput_turbinePars_rotationVsWind %>%  
-        #unlist %>% 
-        matrix(ncol=2, byrow = TRUE) %>%
-        as.tibble() %>%
-        transmute(windSpeed = as.numeric(V1), rotationSpeed = as.numeric(V2)) %>%
-        dplyr::filter(!(is.na(windSpeed) & is.na(rotationSpeed)))
-      
-      
-      rv$pitchVsWind_df[1, 1] <- NA           # trick required to restore from unsaved changes (issue specific to handsonTables <-> rv's)
-      rv$pitchVsWind_df <- input$store$hotInput_turbinePars_pitchVsWind %>%
-        #unlist %>% 
-        matrix(ncol=2, byrow = TRUE) %>%
-        as.tibble() %>%
-        transmute(windSpeed = as.numeric(V1), bladePitch = as.numeric(V2)) %>%
-        dplyr::filter(!(is.na(windSpeed) & is.na(bladePitch)))
-      
-      # - radio buttons inputs
-      updateRadioGroupButtons(session, inputId = "radGrpInput_turbinePars_rotationAndPitchOption", 
-                              selected = input$store$radGrpInput_turbinePars_rotationAndPitchOption)
-      
-      
-      # -----  update trigger to activate chained module restoring species specific parameters ---- #
-      rv$restoringChain <- !rv$restoringChain 
-      
-    }else{
-      # show modal alerting that there are no input values stored
-      sendSweetAlert(session = session, title = "Oops!", 
-                     text = "Sorry, no parameter values currently stored",
-                     type = "error")
-    }
-  })
-  
-  
-  
-  
-  # ----- Restoring latest saved input values - Stage 2: species specific parameters. 
-  #
-  # Triggered as a chain reaction of the module above.
-  observeEvent(rv$restoringChain, ignoreInit = TRUE, {
-    
-    storedSlctSpecLabel <<- str_replace_all(input$store$selectSpecs, pattern = "\\s|-", replacement = "_") 
-    
-    for(spec in storedSlctSpecLabel){
-      
-      # numeric inputs
-      names(input$store) %>% stringr::str_subset(pattern = paste0("numInput_biomPars_.+", spec)) %>%
-        walk(function(x){
-          updateNumericInput(session, inputId = x, value = ifelse(is.null(input$store[[x]]), NA, input$store[[x]]))
-        })
-      
-      # radio buttons inputs
-      names(input$store) %>% stringr::str_subset(pattern = paste0("slctInput_.+", spec)) %>%
-        walk(function(x){
-          updateRadioGroupButtons(session, inputId = x, selected = input$store[[x]])  
-        })
-      
-      # monthly densities parameters
-      cSpecStoredMonthDens_DFName <- names(input$store) %>% stringr::str_subset(pattern = paste0("hotInput_.+", spec))
-      
-      if(!is_empty(cSpecStoredMonthDens_DFName)){
-        
-        rv$startSpecMonthDens_df[[spec]] <- data.frame()  # trick required to restore from unsaved changes, forcing change in rv$startSpecMonthDens_df
-        rv$startSpecMonthDens_df[[spec]] <- input$store[[cSpecStoredMonthDens_DFName]] %>%
-          #unlist() %>%
-          matrix(nrow = 2, byrow = TRUE) %>%
-          t() %>%
-          as.tibble() %>%
-          transmute(meanDensity = as.numeric(V1), sdDensity = as.numeric(V2))
-      }
-    }
-    
-    rv$restoringChain_2 <- !rv$restoringChain_2
-  })
-  
-  
-  
-  # ----- Restoring latest saved input values - Stage 3: re-render bird density tables with restored values
-  #
-  # Triggered as a chain reaction of the previous module. Required to guarantee that tables for all stored species are correctly updated
-  # These tables are firstly rendered as species are added, but they need to be re-rendered separately for restoring purposes
-  observeEvent(rv$restoringChain_2, ignoreInit = TRUE, {
-    
-    walk(storedSlctSpecLabel, function(x, startSpecMonthDens = rv$startSpecMonthDens_df){
-      
-      # input table for truncated normal parameters
-      hotTag_truncNorm <- paste0("hotInput_birdDensPars_tnorm_", x)
-      cStartSpecMonthDens <- startSpecMonthDens[[x]]
-      
-      output[[hotTag_truncNorm]] <- renderRHandsontable({
-        
-        data.frame(cStartSpecMonthDens) %>%
-          mutate(month = month.name) %>%
-          column_to_rownames(var = "month") %>%
-          t() %>%
-          rhandsontable(rowHeaderWidth = 160,
-                        rowHeaders = c("Mean birds/km^2", "SD of birds/km^2")) %>%
-          hot_cols(colWidths = 90,
-                   renderer = "function (instance, td, row, col, prop, value, cellProperties) {
-                   Handsontable.renderers.NumericRenderer.apply(this, arguments);
-                   if (!value) {
-                   td.style.background = 'pink';
-                   }}") %>%
-          hot_table(highlightCol = TRUE, highlightRow = TRUE) %>%
-          hot_context_menu(allowRowEdit = FALSE, allowColEdit = FALSE)
-      })
-    })
-    
-    # Show modal confirming stored input values have been restored
-    sendSweetAlert(session = session, title = "Parameters restored!",
-                   text = "Previously stored parameter values have been restored",
-                   type = "success")
-    
-  })
-  
-  
-  
-  
-  
-  #' -----------------------------------------------------------------
-  #  ----          Data Templates Management                      ----
-  #' -----------------------------------------------------------------
   
   
   # --- Manages downloads of data templates
@@ -1033,8 +456,6 @@ app_server <- function( input, output, session ) {
       )
     })
   })
-  
-  
   
   
   
@@ -1129,142 +550,7 @@ app_server <- function( input, output, session ) {
   
   
   
-  # --- Plots of the bootstrap samples of FHD uploaded by the user
-  observeEvent(flgtHghDstInputs_ls(), {
-    
-    req(length(flgtHghDstInputs_ls())>0)
-    
-    walk2(flgtHghDstInputs_ls(), names(flgtHghDstInputs_ls()), function(x, y){
-      
-      specLabel <- map_chr(stringr::str_split(y, "_"), function(x) paste(x[-c(1:3)], collapse = "_"))
-      plotTagBoot_user <- paste0("plot_UserFHD_allBoots_", specLabel)
-      plotTagBootQts_user <- paste0("plot_UserFHD_QtsBoot_", specLabel)
-      
-      # data prep: rename height column and drop all 0s columns
-      x %<>% dplyr::rename(Height = matches("(H|h)eight")) %>%
-        dplyr::select_if(colSums(., na.rm = TRUE) > 0)
-      
-      
-      ### Replace with heatmaply
-      
-      # output[[plotTagBoot_user]] <-  renderD3heatmap({
-      #   
-      #   validate(
-      #     need(ncol(x) > 1,
-      #          paste0("Error: uploaded FHD data is not valid - at least one of the bootstrap samples provided needs to be non-zero.")),
-      #     errorClass = "valErrorMsgClass_2"
-      #   )
-      #    
-      #   
-      #   x %>%
-      #     select(1:min(100, ncol(.))) %>%
-      #     slice(1:50) %>%
-      #     arrange(desc(Height)) %>%
-      #     select(-Height) %>%
-      #     d3heatmap(colors = manual2_pal_cont(40), dendrogram = 'none', labRow = paste0(nrow(.):1, " m"),
-      #               xaxis_font_size= "5pt", labCol = paste0("bootID ", 1:ncol(.)))
-      #   
-      # })
-      
-      ##############
-      
-      output[[plotTagBootQts_user]] <- renderPlot({
-        
-        validate(
-          need(ncol(x) > 1,
-               paste0("Error: uploaded FHD data is not valid - no non-zero values in any of bootstrap samples provided. ",
-                      "Please upload a different dataset")),
-          errorClass = "valErrorMsgClass_2"
-        )
-        
-        x %>%
-          gather(bootId, Prop, -Height) %>%
-          group_by(Height) %>%
-          dplyr::filter(!is.na(Prop)) %>%
-          summarise(
-            perc2.5 = quantile(Prop, probs = 0.025),
-            perc50 = quantile(Prop, probs = 0.5),
-            perc97.5 = quantile(Prop, probs = 0.975)) %>%
-          #filter(perc97.5 > 0.00005) %>%
-          ggplot(aes(y = perc50, x = Height)) +
-          geom_pointrange(aes(ymin = perc2.5, ymax = perc97.5), col = "darkorange", size = 0.3) +
-          #geom_line(size = 0.8) +
-          labs(y = "Proportion", x = "Height (m)")
-      })
-      
-    })
-  })
-  
-  
-  # --- generates plots to vizualize default bootstrap data of FHD
-  observeEvent(rv$addedSpec, {
-    
-    req(rv$addedSpec)
-    
-    walk(rv$addedSpec, function(x){
-      
-      specLabel <- slctSpeciesTags() %>% dplyr::filter(species == x) %>% dplyr::pull(specLabel) #gsub(" ", "_", x)
-      
-      plotTagBoot <- paste0("plot_defaultFHD_allBoots_", specLabel)
-      plotTagBootQts <- paste0("plot_defaultFHD_QtsBoot_", specLabel)
-      
-      addedSpec_defFHDBootDt <- fread_possibly(paste0("data/", specLabel, "_ht_dflt.csv"))
-      
-      
-      #### REPLACE WITH heatmaply https://github.com/talgalili/heatmaply
-      # output[[plotTagBoot]] <- renderD3heatmap({
-      #   
-      #   validate(
-      #     need(!is.null(addedSpec_defFHDBootDt),
-      #          paste0("Warning: Default FHD data for ", x, " not available. ",
-      #                 "Select 'Other' to upload data. ",
-      #                 "Missing data will lead to invalid results for model Options 2 & 3"
-      #          )),
-      #     errorClass = "valErrorMsgClass_2"
-      #   )
-      #   
-      #   addedSpec_defFHDBootDt %>%
-      #     slice(1:50) %>%
-      #     arrange(desc(Height_m)) %>%
-      #     select(bootId_1:bootId_100) %>%
-      #     d3heatmap(colors = manual2_pal_cont(40), dendrogram = 'none', labRow = paste0(nrow(.):1, " m"),
-      #               xaxis_font_size= "5pt", labCol = paste0("bootID ", 1:ncol(.)))
-      #   
-      # })
-      ####
-      
-      
-      output[[plotTagBootQts]] <- renderPlot({
-        
-        validate(
-          need(!is.null(addedSpec_defFHDBootDt),
-               paste0("Warning: Default FHD data for ", x, " not available. ",
-                      "Select 'Other' to upload data. ",
-                      "Missing data will lead to invalid results for model Options 2 & 3"
-               )),
-          errorClass = "valErrorMsgClass_2"
-        )
-        
-        addedSpec_defFHDBootDt %>%
-          gather(bootId, Prop, -Height_m) %>%
-          group_by(Height_m) %>%
-          dplyr::filter(!is.na(Prop)) %>%
-          summarise(
-            perc2.5 = quantile(Prop, probs = 0.025),
-            perc50 = quantile(Prop, probs = 0.5),
-            perc97.5 = quantile(Prop, probs = 0.975)) %>%
-          dplyr::filter(perc97.5 > 0.000001) %>%
-          ggplot(aes(y = perc50, x = Height_m)) +
-          geom_pointrange(aes(ymin = perc2.5, ymax = perc97.5), col = "darkorange", size = 0.3) +
-          #geom_line(size = 0.8) +
-          labs(y = "Proportion", x = "Height (m)")
-        
-      })
-      
-    })
-  })
-  
-  
+
   
   ## --- Generates plots for Turbine parameters
   observe({
@@ -1317,218 +603,7 @@ app_server <- function( input, output, session ) {
   
   
 
-  
-  
-  
-  
-  
-  
-  ### -- Generate plots for random samples of monthly densities
-  observeEvent(monthDens_userDt_sample_ls(), {
-    
-    req(length(monthDens_userDt_sample_ls())>0)
-    
-    walk2(monthDens_userDt_sample_ls(), names(monthDens_userDt_sample_ls()), function(x, y){
-      
-      #browser()
-      
-      specLabel <- str_extract(y, "(?<=upldInput_monthDens_userDt_samples_).*")
-      specName <- str_replace_all(string = specLabel, "_", " ")
-      plotTag<- paste0("plot_inputMonthDens_samples_", specLabel)
-      plotTagQtlsBars <- paste0("plot_inputMonthDens_QtlsBars_samples_", specLabel)
-      
-      output[[plotTag]] <- renderPlot({
-        
-        validate(
-          need(ncol(x) == 12 & nrow(x) >= 1000,
-               paste0("Warning: the dimension of the uploaded data with samples of monthly densities of ", specName, " does not conform with size requirements",
-                      " (12 columns by a minimum of 1000 rows)."
-               )),
-          errorClass = "valErrorMsgClass"
-        )
-        
-        x %>%
-          gather(month, density)  %>%
-          mutate(month = factor(month, levels = unique(month))) %>%
-          ggplot(aes(x = density)) +
-          geom_histogram(fill="darkorange", col = "black", bins = 50) +
-          labs(x = "Number of birds per km2", y = "Frequency", title = paste0("Uploaded draws from the distribution of monthly densities of ", specName)) +
-          facet_wrap(~month, ncol = 6)
-        #coord_flip() +
-        #facet_grid(~month)
-      })
-      
-      
-      output[[plotTagQtlsBars]] <- renderPlot({
-        
-        if(ncol(x) == 12 & nrow(x) >= 1000){
-          x %>%
-            gather(month, density)  %>%
-            mutate(month = factor(month, levels = unique(month))) %>%
-            group_by(month) %>%
-            summarise(
-              lowBound = quantile(density, 0.025), 
-              median = quantile(density, 0.5), 
-              uppBound = quantile(density, 0.975)
-            ) %>%
-            ggplot(aes(x = month, y = median)) +
-            geom_errorbar(aes(ymin = lowBound, ymax = uppBound), col = "darkorange", width = 0.2, size = 1) +
-            geom_point(col="darkorange", size = 2) +
-            labs(y = "Number of birds per km2", x = "", title = paste0(specName, " - Median and 95% PI from uploaded data"))
-        }else{
-          NULL
-        }
-      })
-    })
-  })
-  
-  
-  ### -- Generate plots for reference points of monthly densities
-  observeEvent(monthDens_userDt_summs_ls(), {
-    
-    req(length(monthDens_userDt_summs_ls())>0)
-    
-    walk2(monthDens_userDt_summs_ls(), names(monthDens_userDt_summs_ls()), function(x, y){
-      
-      #browser()
-      
-      specLabel <- str_extract(y, "(?<=upldInput_monthDens_userDt_summaries_).*")
-      specName <- str_replace_all(string = specLabel, "_", " ")
-      plotTag<- paste0("plot_inputMonthDens_summaries_", specLabel)
-      plotTagQtlsBars<- paste0("plot_inputMonthDens_QtlsBars_summaries_", specLabel)
-      
-      output[[plotTag]] <- renderPlot({
-        
-        validate(
-          need(ncol(x) == 13 & nrow(x) >= 5,
-               paste0("Error: the dimension of the uploaded data with reference points for monthly densities of ", specName, " does not conform with size requirements",
-                      " (expects 13 columns and a minimum of 5 rows.)"
-               )),
-          errorClass = "valErrorMsgClass"
-        )
-        
-        dt <- x %>% 
-          mutate(
-            referencePointsNum = case_when(
-              str_detect(referencePoints, "(M|m)in(|imum)") ~ 0.000001,
-              str_detect(referencePoints, "(M|m)ax(|imum)") ~ 99.99999,
-              str_detect(referencePoints, "th") ~ as.numeric(str_extract(referencePoints, pattern = "\\d+\\.?\\d*"))
-            ),
-            referenceProbs = referencePointsNum/100) %>% 
-          select(-c(referencePoints, referencePointsNum)) %>% 
-          gather(month, birdDensities, -referenceProbs) %>%
-          mutate(month = factor(month, levels = unique(month)))
-        
-        dt_nest <- dt %>%
-          group_by(month) %>%
-          nest() %>%
-          mutate(cdf = map(data, function(x){
-            x_intPoints <- runif(2500, min(x$referenceProbs), max(x$referenceProbs))
-            y_intPoints <- interp1(x$referenceProbs, x$birdDensities, xi = x_intPoints, method = "cubic")
-            
-            data.frame(prob = x_intPoints, birdDensity = y_intPoints) %>%
-              arrange(prob)
-          }))
-        
-        dt_nest %>% select(-data) %>%
-          unnest() %>%
-          ggplot(aes(y = prob, x = birdDensity)) +
-          geom_path(col = "darkorange") +
-          geom_point(aes(x = birdDensities, y = referenceProbs), data = dt, col = "darkorange", size = 2) +
-          facet_grid(~month) +
-          labs(x = "Number of birds per km2", y = "Frequency", title = "Empirical cumulative probability based on uploaded data")
-      })
-      
-      
-      output[[plotTagQtlsBars]] <- renderPlot({
-        
-        if(ncol(x) == 13 & nrow(x) >= 5){
-          x %>% 
-            mutate(
-              referencePointsNum = case_when(
-                str_detect(referencePoints, "(M|m)in(|imum)") ~ 0.000001,
-                str_detect(referencePoints, "(M|m)ax(|imum)") ~ 99.99999,
-                str_detect(referencePoints, "th") ~ as.numeric(str_extract(referencePoints, pattern = "\\d+\\.?\\d*"))
-              ),
-              referenceProbs = referencePointsNum/100) %>% 
-            dplyr::select(-c(referencePoints, referencePointsNum)) %>% 
-            gather(month, birdDensities, -referenceProbs) %>%
-            mutate(month = factor(month, levels = unique(month))) %>%
-            dplyr::filter(referenceProbs %in% c(0.025, 0.5, 0.975)) %>%
-            spread(key = referenceProbs, value = birdDensities) %>%
-            dplyr::rename(lowBound = "0.025", med = "0.5", uppBound = "0.975") %>%
-            ggplot(aes(x = month, y = med)) +
-            geom_errorbar(aes(ymin = lowBound, ymax = uppBound), col = "darkorange", width = 0.2, size = 1) +
-            geom_point(col="darkorange", size = 2) +
-            labs(y = "Number of birds per km2", x = "", title = paste0(specName, " - Median and 95% interval from updloaded data"))
-          
-        }else{
-          NULL
-        }
-      })
-    })
-  })  
-  
-  
-  
-  
-  
-  observeEvent(rv$birdDensParsInputs_ls, {
-    
-    req(length(rv$birdDensParsInputs_ls)>0)
-    
-    tabChanged_ls <- sapply(names(rv$birdDensParsInputs_ls), function(x){
-      !identical(rv$birdDensParsInputs_ls[[x]], birdDensPars_plotted[[x]])
-    })
-    
-    birdDensPars_toPlot <- rv$birdDensParsInputs_ls[c(which(tabChanged_ls == TRUE))]
-    
-    walk2(birdDensPars_toPlot, names(birdDensPars_toPlot), function(x, y){
-      
-      specLabel <- str_extract(y, "(?<=hotInput_birdDensPars_tnorm_).+")
-      specName <- gsub("_", " ", specLabel)
-      plotTag <- paste0("plot_birdDensPars_", specLabel)
-      
-      # print(plotTag)
-      
-      output[[plotTag]] <- renderPlot({
-        
-        as.data.frame(t(x)) %>% 
-          rownames_to_column(var = "month") %>%
-          dplyr::rename(meanDensity = V1, sdDensity = V2) %>%
-          mutate(month = factor(month, levels = month)) %>%
-          group_by(month) %>%
-          mutate(med = qtnorm_dmp(p=0.5, mean = meanDensity, sd = sdDensity, lower = 0),
-                 lwBound = qtnorm_dmp(p=0.025, mean = meanDensity, sd = sdDensity, lower = 0),   
-                 upBound = qtnorm_dmp(p=0.975, mean = meanDensity, sd = sdDensity, lower = 0)) %>%
-          ggplot(aes(x=month, y = med, group=month)) +
-          geom_errorbar(aes(ymin=lwBound, ymax=upBound), col = "darkorange", width = 0.2, size = 1) +
-          geom_point(col="darkorange", size = 3) +
-          labs(y = "Number of birds per km2", x = "", title = paste0(specName, " (Median and 95% CI)"))
-      })
-    })
-    
-    birdDensPars_plotted <<- rv$birdDensParsInputs_ls # birdDensPars_toPlot 
-  })
-  
-  
-  
-  
-  
-  
-  #' --------------------------------------------------------------------------------
-  #  ----        On-the-fly inputs Validation System with feedback to UI         ----
-  #' --------------------------------------------------------------------------------
-  
-  #observe({
-    
-    #source("inputParsValidations.R", local = TRUE)
-  #})
-  
-  
-  
-  
-  
+
 
 
   #' --------------------------------------------------------------------------------------------------
@@ -1634,317 +709,11 @@ app_server <- function( input, output, session ) {
       })%>%
       semi_join(., slctSpeciesTags(), by = "specLabel")  # filter for currently selected species
     
-    
-    
-    # Logic to deal with missing FHD - if missing for any species, invalidade simulation and launch confirmation window 
-    # (while also preparing data accordingly). Otherwise, set appropriate data (i.e. default or user-uploaded)
-    # for simulation
-    FHD_dataStatus %>%
-      split(.$missingFHD) %>%
-      walk(function(x){
-        if(unique(x$missingFHD) == TRUE){
-          
-          x$specLabel %>% 
-            walk(~fwrite(template_FHD, file=paste0("data/", ., "_ht.csv"), row.names = FALSE))
-          
-          confirmSweetAlert(
-            session = session,
-            inputId = "confirmModal_missingFHD",
-            title = "FHD data not found",
-            text = div(
-              style = "font-size: 15px; text-align: left",
-              hr(),
-              p("Missing flight height distribution data for:"),
-              tags$ul(
-                map(x$specLabel, function(y){
-                  tags$li(str_replace_all(y, "_", " "))
-                })
-              ), 
-              #br(),
-              p("Simulation results for model Option 2 and Option 3 will be invalid for the species mentioned above. Option 1 results not affected by missing FHD data."),
-              p(tags$b("Do you wish to proceed with the simulation?"),  style = "text-align: center")
-            ),
-            type = "warning",
-            danger_mode = TRUE,
-            btn_labels = c("No, Go Back", "Yes, Proceed"),
-            html = TRUE
-          )
-          
-          rv$FHD_acceptable <- FALSE
-          
-        }else{
-          
-          x$specLabel %>% 
-            walk(., function(spLab){
-              
-              FHD_Option <- FHD_UserOptions_ls[[str_which(names(FHD_UserOptions_ls), spLab)]]
-              
-              if(FHD_Option == "default"){
-                
-                file.copy(from = paste0("data/", spLab, "_ht_dflt.csv"), to = paste0("data/", spLab, "_ht.csv"), 
-                          overwrite = TRUE)
-                
-              }else{
-                if(FHD_Option == "other"){
-                  
-                  UserFHD_lsIndex <- str_which(names(flgtHghDstInputs_ls()), spLab)
-                  dataToWrite <- flgtHghDstInputs_ls()[[UserFHD_lsIndex]]
-                  fwrite(dataToWrite, file=paste0("data/", spLab, "_ht.csv"), row.names = FALSE)
-                }}
-            })
-          
-          rv$FHD_acceptable <- TRUE
-        }
-      })
-    
-    
-    
-    # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # # --------- bird density data
-    
-    # --- get user options for each species
-    if(length(rv$mthDens_userOptions)>0){
-      
-      rv$monthDensOpt_model <- rv$mthDens_userOptions %>%
-        map2_df(., names(.), function(x,y){
-          tibble(userOptionTag = as.character(y), userOption = as.character(x))
-        }) %>%
-        mutate(
-          specLabel = str_replace(userOptionTag, "slctInput_userOpts_monthDens_sampler_", replacement = ""),
-          specName = str_replace_all(specLabel, "_", " ")
-        ) %>%
-        semi_join(., slctSpeciesTags(), by = "specLabel")  # filter for currently selected species
-      
-      # -- check if there is missing data for any of the options
-      densDataMissing <- rv$monthDensOpt_model %>%
-        split(.$specLabel) %>%
-        map_dfr(function(x){
-          if(x$userOption == "truncNorm"){
-            mutate(x, densDataMissing = ifelse(any(str_detect(safe_names(rv$birdDensParsInputs_ls), pattern = specLabel)), FALSE, TRUE))
-          }else{
-            if(x$userOption == "pcntiles"){
-              mutate(x, densDataMissing = ifelse(any(str_detect(safe_names(monthDens_userDt_summs_ls()), pattern = specLabel)), FALSE, TRUE))
-            }else{
-              if(x$userOption == "reSamp"){
-                mutate(x, densDataMissing = ifelse(any(str_detect(safe_names(monthDens_userDt_sample_ls()), pattern = specLabel)), FALSE, TRUE))
-              }
-            }
-          }
-        }) %>%
-        dplyr::filter(densDataMissing == TRUE)
-      
-      #browser()
-      
-      # --- Launch error message and block simulation if any dens data is missing; else, prepare data for model
-      if(nrow(densDataMissing) > 0){
-        
-        # flagging absence of data
-        rv$densityDataPresent <- FALSE
-        
-        # Modal describing error
-        sendSweetAlert(
-          session = session,
-          title = "Bird density data not found",
-          text = span(
-            style = "font-size: 15px; text-align: left",
-            hr(),
-            p("Missing density data for the following species"),
-            tags$ul(
-              map2(densDataMissing$specName, densDataMissing$userOption, function(x,y){
-                
-                if(y == "truncNorm"){
-                  tags$li(paste0(x, " - truncated normal parameters for monthly densities not found"))
-                }else{
-                  if(y == "pcntiles"){
-                    tags$li(paste0(x, " - reference points of monthly densities not uploaded"))
-                  }else{
-                    if(y == "reSamp"){
-                      tags$li(paste0(x, " - random samples of monthly densities not uploaded"))
-                    }}}
-              })
-            ), 
-            br(),
-            tags$b("Please upload and/or fill in missing data before proceeding to simulation", style = "text-align: center")
-          ),
-          type = "error",
-          html = TRUE
-        )
-        
-      }else{
-        
-        # flagging presence of data
-        rv$densityDataPresent <- TRUE
-        
-        rv$monthDensData_model <- rv$monthDensOpt_model %>%
-          group_by(userOption) %>%
-          mutate(option = userOption) %>%
-          nest(metadata = -userOption) %>%
-          #nest(.key = "metadata") %>%
-          mutate(data = map(metadata, function(x){
-            
-            #browser()
-            
-            if(unique(x$option) == "truncNorm"){
-              
-              countData <- rv$birdDensParsInputs_ls %>%
-                map2_df(., names(.), function(x,y){
-                  as.data.frame(x) %>%
-                    rownames_to_column(var="hyperPar") %>%
-                    add_column(., inputTags = y, .before = 1)
-                }) %>%
-                mutate(inputTags_split = stringr::str_split(inputTags, "_")) %>%
-                mutate(Species = map_chr(inputTags_split, function(x) paste(x[-c(1:3)], collapse = "_"))) %>%
-                select(Species, hyperPar:December) %>%
-                gather(month, Value, -c(Species, hyperPar)) %>%
-                group_by(Species) %>%
-                mutate(VariableMasden = factor(paste0(rep(month.abb, each=2), c("", "SD"))),
-                       VariableMasden = factor(VariableMasden, levels = VariableMasden)
-                ) %>%
-                select(-c(hyperPar:month)) %>%
-                spread(VariableMasden, Value) %>%
-                dplyr::filter(Species %in% x$specLabel)
-              
-              out <- countData
-            }
-            
-            
-            if(unique(x$option) == "reSamp"){
-              out <- rbindlist(monthDens_userDt_sample_ls(), idcol = TRUE) %>%
-                mutate(specLabel = str_replace_all(.id, "upldInput_monthDens_userDt_samples_", "")) %>%
-                select(specLabel, January:December)
-            }
-            
-            if(unique(x$option) == "pcntiles"){
-              
-              out <- rbindlist(monthDens_userDt_summs_ls(), idcol = TRUE) %>%
-                mutate(specLabel = str_replace_all(.id, "upldInput_monthDens_userDt_summaries_", "")) %>%
-                select(specLabel, referencePoints:December) %>%
-                mutate(
-                  referencePointsNum = case_when(
-                    str_detect(referencePoints, "(M|m)in(|imum)") ~ 0.000001,
-                    str_detect(referencePoints, "(M|m)ax(|imum)") ~ 99.99999,
-                    str_detect(referencePoints, "th") ~ as.numeric(str_extract(referencePoints, pattern = "\\d+\\.?\\d*"))
-                  ),
-                  referenceProbs = referencePointsNum/100) %>%
-                select(-c(referencePoints, referencePointsNum))
-            }
-            
-            return(out)
-          }))
-        
-        
-        # -- Check for NAs in truncated normal parameters and store affected parameters
-        monthDensData_truncNorm <- rv$monthDensData_model %>% dplyr::filter(userOption == "truncNorm")
-        
-        if(nrow(monthDensData_truncNorm) > 0){
-          
-          monthDensData_truncNorm <- left_join(
-            unnest(monthDensData_truncNorm, metadata), 
-            unnest(monthDensData_truncNorm, data), 
-            by = c("userOption", "specLabel" = "Species"))
-          
-          
-          missingValues[["birdMonthDens"]] <- monthDensData_truncNorm %>%
-            ungroup() %>%
-            select(-c(userOption, userOptionTag, option)) %>%
-            gather(par_hyper, Value, -c(specLabel, specName)) %>%
-            filter(is.na(Value)) %>%
-            select(-Value)  
-        }
-      }
-    }
-    
-    
+  
     
     # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # # --------- turbine data 
-    
-    
-    
-    
-    #' managing the option of prodist vs windspeed - relationship for rotation speed and blade pitch 
-    #' Model function expects NAs on associated hyperparameters when the latter in optioned
-    rotSpeed_E <- ifelse(input$radGrpInput_turbinePars_rotationAndPitchOption == 'probDist',   
-                         input$numInput_turbinePars_rotnSpeed_E_, NA)
-    rotSpeed_SD <- ifelse(input$radGrpInput_turbinePars_rotationAndPitchOption == 'probDist', 
-                          input$numInput_turbinePars_rotnSpeed_SD_, NA)
-    
-    pitch_E <- ifelse(input$radGrpInput_turbinePars_rotationAndPitchOption == 'probDist', 
-                      input$numInput_turbinePars_bladePitch_E_, NA)
-    
-    pitch_SD <- ifelse(input$radGrpInput_turbinePars_rotationAndPitchOption == 'probDist', 
-                       input$numInput_turbinePars_bladePitch_SD_, NA)
-    
-    
-    # merging turbine data
-    rv$turbineData_model <- tibble(
-      TurbineModel = input$numInput_turbinePars_turbinePower,
-      Blades = input$numInput_turbinePars_numBlades,
-      RotorRadius	= input$numInput_turbinePars_rotRadius,
-      RotorRadiusSD	= 0, #input$numInput_turbinePars_rotRadius_SD_,
-      HubHeightAdd = input$numInput_turbinePars_airGap,
-      HubHeightAddSD	= 0, #input$numInput_turbinePars_hubHght_SD_,
-      BladeWidth	= input$numInput_turbinePars_maxBladeWdth,
-      BladeWidthSD = 0, #input$numInput_turbinePars_maxBladeWdth_SD_,
-      RotorSpeedAndPitch_SimOption = input$radGrpInput_turbinePars_rotationAndPitchOption,
-      RotationSpeed = rotSpeed_E,
-      RotationSpeedSD = rotSpeed_SD,
-      Pitch = pitch_E,
-      PitchSD = pitch_SD,
-      windSpeedMean = input$numInput_miscPars_windSpeed_E_, 
-      windSpeedSD = input$numInput_miscPars_windSpeed_SD_
-    ) %>%
-      left_join(., turbineData_Operation, by = "TurbineModel")
-    
-    
-    # check and identify NAs in Turbine data - if wind-speed reltn chosen, NAs in rotation and pitch parameters need to be ignored
-    if(input$radGrpInput_turbinePars_rotationAndPitchOption == "windSpeedReltn"){
-      missingValues[["Turbine"]] <- rv$turbineData_model %>% 
-        dplyr::select(-c(RotationSpeed, RotationSpeedSD, Pitch, PitchSD)) %>%
-        gather(par_hyper, Value, -c(TurbineModel)) %>%
-        dplyr::filter(is.na(Value)) %>%
-        dplyr::select(-c(TurbineModel, Value))
-    }else{
-      missingValues[["Turbine"]] <- rv$turbineData_model %>% 
-        gather(par_hyper, Value, -c(TurbineModel)) %>%
-        dplyr::filter(is.na(Value)) %>%
-        dplyr::select(-c(TurbineModel, Value))
-    }
-    
-    
-    
-    # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # # --------- wind farm parameters
-    
-    rv$windfarmData_model <- tibble(
-      targetPower_MW = input$numInput_windfarmPars_nTurbines * input$numInput_turbinePars_turbinePower,
-      nTurbines = input$numInput_windfarmPars_nTurbines,
-      latitude_deg = input$numInput_windfarmPars_Latitude,
-      width_km = input$numInput_windfarmPars_width,
-      TidalOffset_m = input$numInput_windfarmPars_tidalOffset,
-      upwindFlights_prop = input$sldInput_windfarmPars_upWindDownWindProp
-    )
-    
-    
-    # check and identify NAs in windfarm pars
-    missingValues[["windfarm"]] <- rv$windfarmData_model %>%
-      mutate(dummy = 1) %>%
-      gather(par_hyper, Value, -dummy) %>%
-      dplyr::filter(is.na(Value)) %>%
-      dplyr::select(-Value)
-    
-    
-    # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # # --------- Handling NAs in data
-    
-    # Resume missing values in all data
-    missingValues %<>% dplyr::bind_rows(.id = "dataType") %>%
-      dplyr::mutate(dataMainType = dplyr::case_when(
-        dataType %in% c("birdBiom", "birdMonthDens") ~ "speciesFeatures",
-        dataType %in% c("Turbine") ~ "turbineFeatures",
-        dataType %in% c("windfarm") ~ "turbineFeatures"
-      ))
-    
+  
     if(nrow(missingValues) > 0){
       
       # flag presence of NAs in data
@@ -1993,25 +762,7 @@ app_server <- function( input, output, session ) {
   })
   
   
-  
-  ## -------------------------------------------------------------------------- ## 
-  ## --- intermediary step to deal with user confirmation on missing FHD data -- ##
-  
-  observeEvent(input$confirmModal_missingFHD, {
-    
-    if(input$confirmModal_missingFHD == TRUE){
-      rv$FHD_acceptable <- TRUE
-    }else{
-      rv$FHD_acceptable <- FALSE
-    }
-    
-    rv$simCodeTrigger <- rv$simCodeTrigger + 1
-  })
-  
-  
-  
-  
-  
+ 
   #' -----------------------------------------------------------------------
   #  ----            Collision Risk Simulation Model                    ----
   #' -----------------------------------------------------------------------

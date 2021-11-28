@@ -23,6 +23,7 @@
 #' @import pracma
 #' @import heatmaply
 #' @import leaflet
+#' @import stochLAB
 #' @noRd
 #' 
 
@@ -110,11 +111,15 @@ app_ui <- function(request) {
     sidebarMenu(
       id = "tabs",
       menuItem(
-        "Step 2: Turbine & Wind farm features", tabName = "tab_turbWindPars", icon = icon("tachometer")
+        "Step 1: Turbine & Wind farm features", tabName = "tab_turbWindPars", icon = icon("tachometer-alt")
       ),
       hr(),
       menuItem(
-        "Step 3: Species features", tabName = "tab_birdPars", icon = icon("twitter")
+        "Step 2: Species features", tabName = "tab_birdPars", icon = icon("twitter")
+      ),
+      hr(),
+      menuItem(
+        "Step 3: Generate scenarios", tabName = "tab_generateScenarios", icon = icon("cogs")
       ),
       hr(),
       menuItem(
@@ -169,9 +174,13 @@ app_ui <- function(request) {
                                                                             style = "color: steelblue"))),
                              selectizeInput("selectInput_builtin_wfList",
                                          label = "Select wind farms (Maximum 5)",
-                                         choices = EMOD_OSWFs_WGS84_UK$NAME[order(EMOD_OSWFs_WGS84_UK$NAME)],
+                                         choices = Scotwind_Merged$NAME[order(Scotwind_Merged$NAME)],
                                          options = list(maxItems = 5L)
                              ),
+                             
+                             p("Click button to update the list of windfarms"),
+                             actionButton("button_update_Windfarm_tabs","Update windfarm list", class="btn-lg btn-success"),
+                             br(),
                              
                              p("If drawing from the existing list of windfarms, simply click in the text box above\
                                to begin searching. The dropdown is populated from publicly accessible shapefiles of\
@@ -188,9 +197,20 @@ app_ui <- function(request) {
                       )
                   )
                 ),
-                ### Windfarm parameter modules get inserted here
-                uiOutput("windfarm_placeholder"),
                 
+                
+                
+                fluidRow(
+                  column(width=12,
+                         box(width=12,
+                             status='primary',
+                             tabsetPanel(id="windfarm_Tabs",
+                                         type="tabs"
+                             )
+                         )))
+                ### Windfarm parameter modules get inserted here
+                #uiOutput("windfarm_placeholder"),
+
         ),
         tabItem(tabName="tab_birdPars", class="active",
                 fluidRow(
@@ -203,12 +223,12 @@ app_ui <- function(request) {
                     column(12,
                            selectizeInput("selectInput_builtin_speciesList",
                                           label = "Select species (scientific names instead?)",
-                                          choices = species_data$Common,
+                                          choices = defaultSpeciesValues$Common_name,
                                           options = list(maxItems = 20L)
                            ),
                            br(),
                            p("Click to update the species based on the above selection. If you remove a species, you'll have to re-enter the data"),
-                           actionButton("button_update_Species_tabs","Update species list"),
+                           actionButton("button_update_Species_tabs","Update species list", class="btn-lg btn-success"),
                            br(),
                            uiOutput("Species_Count")
                     )
@@ -219,195 +239,67 @@ app_ui <- function(request) {
                            box(width=12,
                                status='primary',
                               tabsetPanel(id="specTabs",
-                                          type="tabs",
-                                          
-                                          
-                                          tabPanel("Greylag goose",
-                                                   fluidRow(
-                                                     column(width=12,
-                                                            box(width=6,
-                                                                title = "Migration parameters",
-                                                                status = "primary", 
-                                                                solidHeader = TRUE,
-                                                                collapsible = TRUE,
-                                                                column(12,
-                                                                       
-                                                                       radioGroupButtons(inputId = "radGrpInput_Densities_userinput_or_lines",
-                                                                                         individual = TRUE,
-                                                                                         justified = TRUE, 
-                                                                                         label = NULL,
-                                                                                         choices = c("Manual input" = "manualDensities",
-                                                                                                     "Simulate counts" = "simulateDensities"),
-                                                                                         checkIcon = list(yes = tags$i(class = "fa fa-circle",
-                                                                                                                       style = "color: steelblue"),
-                                                                                                          no = tags$i(class = "fa fa-circle-o",
-                                                                                                                      style = "color: steelblue"))),
-                                                                       
-                                                                       uiOutput("spShape_builtin_or_userinput_radio"),
-                                                                       
-                                                                       uiOutput("spShape_upload_shape"),
-                                                                       
-                                                                       switchButton(inputId = "switch_pre_breeding_migration",
-                                                                                    label = "Pre-breeding migration", 
-                                                                                    value = TRUE, col = "GB", type = "OO"),
-                                                                       
-                                                                       switchButton(inputId = "switch_post_breeding_migration",
-                                                                                    label = "Post-breeding migration", 
-                                                                                    value = FALSE, col = "GB", type = "OO"),
-                                                                       
-                                                                       switchButton(inputId = "switch_other_migration",
-                                                                                    label = "Other migration", 
-                                                                                    value = FALSE, col = "GB", type = "OO")
-                                                                       
-                                                                       
-                                                                       
-                                                                )  
-                                                                
-                                                            ),
-                                                            
-                                                            box(width=6,
-                                                                title = "Migration corridor",
-                                                                status = "primary", 
-                                                                solidHeader = TRUE,
-                                                                collapsible = TRUE,
-                                                                column(12,
-                                                                       leaflet::leafletOutput("MigMap",width="100%") %>% withSpinner(color="#6794d5")
-                                                                       #h3("Migratory map will appear here")
-                                                                )  
-                                                                
-                                                            )
-                                                     )
-                                                   ),
-                                                   
-                                                   fluidRow(
-                                                     column(width=12,
-                                                            box(width=12,
-                                                                title = "Counts per windfarm",
-                                                                status = "primary", 
-                                                                solidHeader = TRUE,
-                                                                collapsible = TRUE,
-                                                                uiOutput("BreedingDensities")
-                                                                # fluidRow(
-                                                                #   column(2,
-                                                                #          uiOutput("WF_names")
-                                                                #   )
-                                                                #   column(3,
-                                                                #          uiOutput("pre_breed_densities")
-                                                                #   ),
-                                                                #   column(3,
-                                                                #          uiOutput("post_breed_densities")
-                                                                #   ),
-                                                                #   column(3,
-                                                                #          uiOutput("other_densities")
-                                                                #   )  
-                                                                # )
-                                                            )
-                                                            
-                                                     )
-                                                   ),
-                                                   
-                                                   fluidRow(
-                                                     column(width=12,
-                                                            box(width = 6,
-                                                                title = "Species parameters",
-                                                                status = "primary", 
-                                                                solidHeader = TRUE,
-                                                                collapsible = TRUE,
-                                                                radioGroupButtons(inputId = "test1", #paste0("slctInput_biomPars_flType_tp_", specLabel), 
-                                                                                  #label = label.help("Flight Type", paste0("lbl_flType_", specLabel)), 
-                                                                                  choices = c("Flapping", "Gliding"), 
-                                                                                  selected = "Flapping",#ifelse(is.null(specStartVals$flType), "Flapping", specStartVals$flType),
-                                                                                  individual = TRUE, justified = FALSE,
-                                                                                  checkIcon = list(yes = icon("ok", lib = "glyphicon"),
-                                                                                                   no = icon("remove", lib = "glyphicon"))
-                                                                ),
-                                                                NormNumericInput(paramID = "biomPars_bodyLt", specID = "test2", #,specLabel, 
-                                                                                 varName = "Body Length (m)",
-                                                                                 #infoId = paste0("lbl_bodyLt_", specLabel),
-                                                                                 via_InsertUI = TRUE,
-                                                                                 E_value = 1,#ifelse(is.null(specStartVals$bodyLt_E), 1, specStartVals$bodyLt_E), 
-                                                                                 E_min=0, E_max=5, E_step = 0.01,
-                                                                                 SD_value = 0,#ifelse(is.null(specStartVals$bodyLt_SD), 0, specStartVals$bodyLt_SD), 
-                                                                                 SD_min = 0, SD_step = 0.001),
-                                                                
-                                                                NormNumericInput(paramID = "biomPars_wngSpan", specID = "test3", #specID = specLabel, 
-                                                                                 varName = "Wing Span (m)",
-                                                                                 #infoId = paste0("lbl_wngSpan_", specLabel),
-                                                                                 via_InsertUI = TRUE,
-                                                                                 E_value = 1,#ifelse(is.null(specStartVals$wngSpan_E), 1, specStartVals$wngSpan_E), 
-                                                                                 E_min=0, E_step = 0.01,
-                                                                                 SD_value = 0,#ifelse(is.null(specStartVals$wngSpan_SD), 0, specStartVals$wngSpan_SD), 
-                                                                                 SD_min = 0, SD_step = 0.001),
-                                                                
-                                                                NormNumericInput( paramID = "biomPars_flSpeed", specID = "test4", #specID = specLabel, 
-                                                                                  varName = "Flight Speed (m/s)",
-                                                                                  #infoId = paste0("lbl_flSpeed_", specLabel),
-                                                                                  via_InsertUI = TRUE,
-                                                                                  E_value = 1,#ifelse(is.null(specStartVals$flSpeed_E), 1, specStartVals$flSpeed_E), 
-                                                                                  E_min=0, E_step = 0.01,
-                                                                                  SD_value = 0,#ifelse(is.null(specStartVals$flSpeed_SD), 0, specStartVals$flSpeed_SD), 
-                                                                                  SD_min = 0, SD_step = 0.01),
-                                                                
-                                                                # NormNumericInput(paramID = "biomPars_noctAct", specID = "test4",#specLabel, 
-                                                                #                  varName = "Nocturnal Activity",
-                                                                #                  #infoId = paste0("lbl_noctAct_", specLabel),
-                                                                #                  via_InsertUI = TRUE,
-                                                                #                  E_value = 1,#ifelse(is.null(specStartVals$noctAct_E), 1, specStartVals$noctAct_E), 
-                                                                #                  E_min=0, E_step = 0.001,
-                                                                #                  SD_value = 0,#ifelse(is.null(specStartVals$noctAct_SD), 0, specStartVals$noctAct_SD), 
-                                                                #                  SD_min = 0, SD_step = 0.001),
-                                                                
-                                                                NormNumericInput(paramID = "biomPars_basicAvoid", specID = "test5" ,#specLabel, 
-                                                                                 varName = "Basic Avoidance",
-                                                                                 #infoId = paste0("lbl_basicAvoid_", specLabel),
-                                                                                 via_InsertUI = TRUE,
-                                                                                 E_value = 1,#ifelse(is.null(specStartVals$basicAvoid_E), 1, specStartVals$basicAvoid_E),  
-                                                                                 E_min=0, E_step = 0.001,
-                                                                                 SD_value = 0,#ifelse(is.null(specStartVals$basicAvoid_SD), 0, specStartVals$basicAvoid_SD),
-                                                                                 SD_min = 0, SD_step = 0.001),
-                                                                
-                                                                NormNumericInput(paramID = "biomPars_CRHeight", specID = "test6", #specLabel, 
-                                                                                 varName = "Proportion at CRH",
-                                                                                 #infoId = paste0("lbl_CRHeight_", specLabel),
-                                                                                 via_InsertUI = TRUE,
-                                                                                 E_value = 1,#ifelse(is.null(specStartVals$CRHeight_E), 1, specStartVals$CRHeight_E),
-                                                                                 E_min=0, E_step = 0.01,
-                                                                                 SD_value = 0,#ifelse(is.null(specStartVals$CRHeight_SD), 0, specStartVals$CRHeight_SD), 
-                                                                                 SD_min = 0, SD_step = 0.001)
-                                                                
-                                                            ),
-                                                            
-                                                            box(width = 6,
-                                                                title = "Plotting space",
-                                                                status = "primary", 
-                                                                solidHeader = TRUE,
-                                                                collapsible = TRUE,
-                                                                h3("Press button to view plot of distribution")
-                                                            )
-                                                     )
-                                                     
-                                                     
-                                                   )
-                                                   
-                                                   
-                                          )
-                                          
-                                          
-                                          
-                                          
-                                          
-                                          
-                                         
+                                          type="tabs"
                              )
-                           )
-                           
-                           
-                           )
-                  )
-                  
-                                
-                              
+                           )))
                 )
+                ),
+        
+        tabItem(tabName="tab_generateScenarios",class="active",
+                fluidRow(
+                 column(12,
+                        p("Click the button to generate a spreadsheet of scenarios to run based on your selections"),
+                        HTML("<p><strong>You must generate these scenarios before continuing</strong></p>"),
+                        p("This list can be edited manually, or you may copy and paste from a spreadsheet")
+                        ),
+                 column(3,
+                        actionButton("button_generate_scenarios","Generate Scenarios", class="btn-lg btn-success")),
+                 column(3,
+                        actionButton("button_download_scenarios","Download Scenarios", class="btn-lg btn-warning")),
+                 column(3,
+                        actionButton("button_upload_scenarios","Upload Scenarios", class="btn-lg btn-primary")),
+                 column(3,
+                        actionButton("button_download_scenario_worksheet","Download Scenario worksheet", class="btn-lg btn-info"))
+                ),
+                fluidRow(
+                style="padding-top:20px;",
+                 box(
+                   title = "Bird scenarios",
+                   width = 12,
+                   status = "primary", 
+                   solidHeader = TRUE,
+                   column(12,
+                          rHandsontableOutput("hotInput_output_bird_scenarios", width = "100%"),
+                   )
+                 )
+                ),
+                fluidRow(
+                  style="padding-top:20px;",
+                  box(
+                    title = "Wind farm scenarios",
+                    width = 12,
+                    status = "primary", 
+                    solidHeader = TRUE,
+                    column(12,
+                           rHandsontableOutput("hotInput_output_wf_scenarios", width = "100%"),
+                    )
+                  )
+                ),
+                fluidRow(
+                  style="padding-top:20px;",
+                  box(
+                    title = "Population scenarios",
+                    width = 12,
+                    status = "primary",
+                    solidHeader = TRUE,
+                    column(12,
+                           rHandsontableOutput("hotInput_output_population_scenarios",width="100%"))
+                  )
+                )
+                
+                
+                
+                
                 ),
         
         
@@ -424,8 +316,9 @@ app_ui <- function(request) {
                                                         "of bird density in later rows of windfarms with a large array of turbines"),
                                          options = list(container = "body"), placement = "right", trigger = "hover"),
                       
-                      switchInput(inputId = "chkBoxInput_simulPars_largeArrarCorr", onStatus = "success", offStatus = "danger", 
-                                  value = TRUE),
+                      switchButton(inputId = "chkBoxInput_simulPars_largeArrarCorr",
+                                   label = "", 
+                                   value = TRUE, col = "GB", type = "OO"),
                       
                       hr(),
                       sliderInput(inputId = "sldInput_simulPars_numIter", label = "Number of Iterations",

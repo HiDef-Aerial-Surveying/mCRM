@@ -1,7 +1,7 @@
 
 #' @import shinyBS
 #' @export
-NormNumericInput <- function(paramID, specID, varName, infoId="foo", infoText ="",
+NormNumericInput <- function(paramID,  varName, infoId="foo", infoText ="", #specID,
                              E_value=50, E_min=1, E_max=100, E_step=1, 
                              SD_value=50, SD_min=1, SD_max=100, SD_step=1,
                              via_InsertUI = FALSE,Button=TRUE){
@@ -20,396 +20,23 @@ NormNumericInput <- function(paramID, specID, varName, infoId="foo", infoText ="
   div(
     splitLayout(
       cellWidths = "30%",
-      numericInput(inputId = paste0("numInput_", paramID, "_E_", specID),
+      numericInput(inputId = paste0("numInput_", paramID, "_E_"),
                    label = label.help(varName, infoId), 
                    min = E_min, max = E_max, step = E_step,
                    value = E_value, width = '90%'),
       
-      numericInput(inputId = paste0("numInput_",  paramID, "_SD_", specID),
+      numericInput(inputId = paste0("numInput_",  paramID, "_SD_"),
                    label = paste0("SD of ", varName),
                    min = SD_min, max = SD_max, step = SD_step,
                    value = SD_value, width = '90%'),
       if(Button==TRUE){
-        actionButton(inputId = paste0("actButt_",  paramID, "_SD_", specID),
+        actionButton(inputId = paste0("actButt_",  paramID, "_SD_"),
                      label = "View plot", width = '90%')  
       }
     ),
     toolTip
   )
 }
-
-
-
-
-
-
-
-#' @import shiny
-#' @export
-selectSpecies_UITabBuilder <- function(specName, tabName, specLabel, session, specStartVals){
-  
-  plotWidth <- 330
-  plotHeight <- 200
-  
-  tabItem(
-    tabName = tabName,
-    
-    fluidRow(
-      box(
-        title = paste0(specName," Migration routes"),
-        width=12,
-        status = "primary", 
-        solidHeader = TRUE,
-        collapsible = TRUE,
-        column(4,
-               radioGroupButtons(inputId = "radGrpInput_migrationshape_builtin_or_userinput",
-                                 individual = TRUE,
-                                 justified = TRUE, 
-                                 label = NULL,
-                                 choices = c("Built in routes" = "existMigRoutes",
-                                             "Custom migration route" = "customMigRoutes"),
-                                 checkIcon = list(yes = tags$i(class = "fa fa-circle",
-                                                               style = "color: steelblue"),
-                                                  no = tags$i(class = "fa fa-circle-o",
-                                                              style = "color: steelblue"))),
-               actionButton(inputId = "actButtonInput_display_mig_map_GO", label = tags$b("Display map"), 
-                            icon = icon("cogs"), width = "100%"),
-               
-        ),
-        column(8,
-               
-               h3("An interactive LEAFLET map will display here")
-        )
-        
-      )
-    ),
-    
-    
-    
-    
-    
-    fluidRow(
-      box(
-        title = paste0(specName, " Parameters"),
-        width = 12,
-        status = "primary", 
-        solidHeader = TRUE,
-        collapsible = TRUE,
-        #side = "right",
-        
-        
-        fluidRow(
-          column(width = 4,
-                 box(width=12,
-                     
-                     radioGroupButtons(inputId = paste0("slctInput_biomPars_flType_tp_", specLabel), 
-                                       label = label.help("Flight Type", paste0("lbl_flType_", specLabel)), 
-                                       choices = c("Flapping", "Gliding"), 
-                                       selected = ifelse(is.null(specStartVals$flType), "Flapping", specStartVals$flType),
-                                       individual = TRUE, justified = FALSE,
-                                       checkIcon = list(yes = icon("ok", lib = "glyphicon"),
-                                                        no = icon("remove", lib = "glyphicon"))
-                     )
-                 )
-          )
-        ),
-        
-        fluidRow(
-          column(width = 4,
-                 box(width = 12,
-                     NormNumericInput(paramID = "biomPars_bodyLt", specID = specLabel, 
-                                      varName = "Body Length (m)",
-                                      infoId = paste0("lbl_bodyLt_", specLabel),
-                                      via_InsertUI = TRUE,
-                                      E_value = ifelse(is.null(specStartVals$bodyLt_E), 1, specStartVals$bodyLt_E), 
-                                      E_min=0, E_max=5, E_step = 0.01,
-                                      SD_value = ifelse(is.null(specStartVals$bodyLt_SD), 0, specStartVals$bodyLt_SD), 
-                                      SD_min = 0, SD_step = 0.001),
-                     h5(paste0("PDF of ", specName, "'s body length")),
-                     plotOutput(paste0("plot_biomPars_bodyLt_", specLabel), width = plotWidth, height = plotHeight),
-                     column(11, 
-                            verbatimTextOutput(paste0("qtls_biomPars_bodyLt_", specLabel))
-                     )
-                     
-                 )
-          ),
-          column(width = 4,
-                 box(width = 12,
-                     NormNumericInput(paramID = "biomPars_wngSpan", specID = specLabel, 
-                                      varName = "Wing Span (m)",
-                                      infoId = paste0("lbl_wngSpan_", specLabel),
-                                      via_InsertUI = TRUE,
-                                      E_value = ifelse(is.null(specStartVals$wngSpan_E), 1, specStartVals$wngSpan_E), 
-                                      E_min=0, E_step = 0.01,
-                                      SD_value = ifelse(is.null(specStartVals$wngSpan_SD), 0, specStartVals$wngSpan_SD), 
-                                      SD_min = 0, SD_step = 0.001),
-                     h5(paste0("PDF of ", specName, "'s wing span")),
-                     plotOutput(paste0("plot_biomPars_wngSpan_", specLabel), width = plotWidth, height = plotHeight),
-                     column(11, 
-                            verbatimTextOutput(paste0("qtls_biomPars_wngSpan_", specLabel))
-                     )
-                 )
-          ),
-          column(width = 4,
-                 box(width = 12,
-                     NormNumericInput( paramID = "biomPars_flSpeed", specID = specLabel, 
-                                       varName = "Flight Speed (m/s)",
-                                       infoId = paste0("lbl_flSpeed_", specLabel),
-                                       via_InsertUI = TRUE,
-                                       E_value = ifelse(is.null(specStartVals$flSpeed_E), 1, specStartVals$flSpeed_E), 
-                                       E_min=0, E_step = 0.01,
-                                       SD_value = ifelse(is.null(specStartVals$flSpeed_SD), 0, specStartVals$flSpeed_SD), 
-                                       SD_min = 0, SD_step = 0.01),
-                     h5(paste0("PDF of ", specName, "'s flight speed")),
-                     plotOutput(paste0("plot_biomPars_flSpeed_", specLabel), width = plotWidth, height = plotHeight),
-                     column(11, 
-                            verbatimTextOutput(paste0("qtls_biomPars_flSpeed_", specLabel))
-                     )
-                 )
-          )
-        ),
-        br(),
-        br(),
-        
-        fluidRow(
-          column(width = 4,
-                 box(width = 12, 
-                     NormNumericInput(paramID = "biomPars_noctAct", specID = specLabel, 
-                                      varName = "Nocturnal Activity",
-                                      infoId = paste0("lbl_noctAct_", specLabel),
-                                      via_InsertUI = TRUE,
-                                      E_value = ifelse(is.null(specStartVals$noctAct_E), 1, specStartVals$noctAct_E), 
-                                      E_min=0, E_step = 0.001,
-                                      SD_value = ifelse(is.null(specStartVals$noctAct_SD), 0, specStartVals$noctAct_SD), 
-                                      SD_min = 0, SD_step = 0.001),
-                     h5(paste0("PDF of ", specName, "'s Nocturnal Activity")),
-                     plotOutput(paste0("plot_biomPars_noctAct_", specLabel), width = plotWidth, height = plotHeight),
-                     column(11, 
-                            verbatimTextOutput(paste0("qtls_biomPars_noctAct_", specLabel))
-                     )
-                 )
-          ),
-          column(width = 4,
-                 box(width = 12, 
-                     NormNumericInput(paramID = "biomPars_basicAvoid", specID = specLabel, 
-                                      varName = "Basic Avoidance",
-                                      infoId = paste0("lbl_basicAvoid_", specLabel),
-                                      via_InsertUI = TRUE,
-                                      E_value = ifelse(is.null(specStartVals$basicAvoid_E), 1, specStartVals$basicAvoid_E),  
-                                      E_min=0, E_step = 0.001,
-                                      SD_value = ifelse(is.null(specStartVals$basicAvoid_SD), 0, specStartVals$basicAvoid_SD),
-                                      SD_min = 0, SD_step = 0.001),
-                     h5(paste0("PDF of ", specName, "'s basic avoidance")),
-                     plotOutput(paste0("plot_biomPars_basicAvoid_", specLabel), width = plotWidth, height = plotHeight),
-                     column(11, 
-                            verbatimTextOutput(paste0("qtls_biomPars_basicAvoid_", specLabel))
-                     )
-                 )
-          ),
-          column(width = 4,
-                 box(width = 12, 
-                     NormNumericInput(paramID = "biomPars_extAvoid", specID = specLabel, 
-                                      varName = "Extended Avoidance",
-                                      infoId = paste0("lbl_extAvoid_", specLabel),
-                                      via_InsertUI = TRUE,
-                                      E_value = ifelse(is.null(specStartVals$extAvoid_E), 1, specStartVals$extAvoid_E),  
-                                      E_min=0, E_step = 0.001,
-                                      SD_value = ifelse(is.null(specStartVals$extAvoid_SD), 0, specStartVals$extAvoid_SD), 
-                                      SD_min = 0, SD_step = 0.001),
-                     h5(paste0("PDF of ", specName, "'s extended avoidance")),
-                     plotOutput(paste0("plot_biomPars_extAvoid_", specLabel), width = plotWidth, height = plotHeight),
-                     column(11, 
-                            verbatimTextOutput(paste0("qtls_biomPars_extAvoid_", specLabel))
-                     )
-                     
-                 )
-          )
-        ),
-        br(),
-        br(),
-        
-        fluidRow(
-          
-          column(width = 4,
-                 box(width = 12, 
-                     NormNumericInput(paramID = "biomPars_CRHeight", specID = specLabel, 
-                                      varName = "Proportion at CRH",
-                                      infoId = paste0("lbl_CRHeight_", specLabel),
-                                      via_InsertUI = TRUE,
-                                      E_value = ifelse(is.null(specStartVals$CRHeight_E), 1, specStartVals$CRHeight_E),
-                                      E_min=0, E_step = 0.01,
-                                      SD_value = ifelse(is.null(specStartVals$CRHeight_SD), 0, specStartVals$CRHeight_SD), 
-                                      SD_min = 0, SD_step = 0.001),
-                     h5(paste0("PDF of ", specName, "'s Collision Risk Height")),
-                     plotOutput(paste0("plot_biomPars_CRHeight_", specLabel), width = plotWidth, height = plotHeight),
-                     column(11, 
-                            verbatimTextOutput(paste0("qtls_biomPars_CRHeight_", specLabel))
-                     )
-                 )
-          )
-          
-        ),
-        
-        br(),
-        
-        fluidRow(
-          box(width = 12,
-              
-              tags$b(HTML(paste0("Monthly Densities", actionLink(paste0("lbl_monthOPs_", specLabel), label=NULL, icon=icon('info-circle'))))),
-              br(),
-              br(),
-              
-              radioGroupButtons(inputId = paste0("slctInput_userOpts_monthDens_sampler_", specLabel),
-                                individual = TRUE,
-                                justified = FALSE, 
-                                label = "Choose how to specify the distribution of monthly bird densities",
-                                choices = c("Truncated Normal" = "truncNorm",
-                                            "Distribution reference points" = "pcntiles",
-                                            "Distribution samples" = "reSamp"),
-                                selected = ifelse(is.null(specStartVals$monthDens_sampler), "truncNorm", specStartVals$monthDens_sampler),
-                                checkIcon = list(yes = tags$i(class = "fa fa-circle",
-                                                              style = "color: steelblue"),
-                                                 no = tags$i(class = "fa fa-circle-o",
-                                                             style = "color: steelblue"))),
-              br(),
-              
-              conditionalPanel(condition = paste0("input.slctInput_userOpts_monthDens_sampler_", specLabel, " == 'truncNorm'"),
-                               helpText("Provide the means and standard deviations of monthly densities, assuming Truncated Normals bounded at 0"),
-                               br(),
-                               rHandsontableOutput(paste0("hotInput_birdDensPars_tnorm_", specLabel), width = "100%"),
-                               tags$style(type="text/css", paste0("#hotInput_birdDensPars_tnorm_", specLabel, " th {font-weight:bold;}")),
-                               br(),
-                               br(),
-                               br(),
-                               fluidRow(
-                                 column(width=8, offset = 2, 
-                                        plotOutput(paste0("plot_birdDensPars_", specLabel), width = 800, height = 350)
-                                 )
-                               )
-                               
-              ),
-              
-              conditionalPanel(condition = paste0("input.slctInput_userOpts_monthDens_sampler_", specLabel, " == 'pcntiles'"),
-                               uiOutput(paste0("renderUI_userUpload_monthDens_summaries_", specLabel), inline = TRUE),
-                               br(),
-                               br(),
-                               fluidRow(
-                                 column(12,
-                                        plotOutput(paste0("plot_inputMonthDens_summaries_", specLabel), width = "100%", height = 300)
-                                 )
-                               ),
-                               br(),
-                               br(),
-                               fluidRow(
-                                 column(12, offset = 3,
-                                        plotOutput(paste0("plot_inputMonthDens_QtlsBars_summaries_", specLabel), width = 800, height = 350)
-                                 )
-                               )
-              ),
-              conditionalPanel(condition = paste0("input.slctInput_userOpts_monthDens_sampler_", specLabel, " == 'reSamp'"),
-                               uiOutput(paste0("renderUI_userUpload_monthDens_samples_", specLabel), inline = TRUE),
-                               br(),
-                               br(),
-                               fluidRow(
-                                 column(12, 
-                                        plotOutput(paste0("plot_inputMonthDens_samples_", specLabel), width = "100%", height = 400)
-                                 )
-                               ),
-                               br(),
-                               br(),
-                               fluidRow(
-                                 column(12, offset = 3, plotOutput(paste0("plot_inputMonthDens_QtlsBars_samples_", specLabel), width = 800, height = 350))
-                               )
-              ),
-              br(),
-              br()
-          )
-        ),
-        
-        # Include bsTooltips with info on parameters
-        uiOutput(paste0("BiomBStoolTips_", specLabel))
-      )
-    )
-  )
-}
-
-
-
-
-#' @export
-results_tabPanelsBuilder <- function(specName, specLabel){
-  
-  #plotWidth <- 400
-  #plotHeight <- 200
-  
-  tabPanel(title = tags$b(specName),
-           fluidRow(
-             box(width = 12,
-                 h4(paste0("Annual number of collisions - ", specName)),
-                 br(),
-                 
-                 column(6,
-                        plotOutput(paste0(specLabel, "_plot_overallCollisions"), width = "100%")
-                 ),
-                 column(6,
-                        align="center",
-                        div(dataTableOutput(paste0(specLabel, "_summTable_overallCollisions")), 
-                            style = "font-size: 90%; width: 100%")
-                 )
-             )
-           ),
-           fluidRow(
-             box(width = 12,
-                 h4(paste0("Monthly number of collisions by model option - ", specName)),
-                 br(),
-                 
-                 fluidRow(
-                   column(6, 
-                          br(),br(),br(),br(),
-                          plotOutput(paste0(specLabel, "_plot_monthCollisions_Option1"), width = "100%")
-                   ),
-                   column(6, 
-                          align="center",
-                          div(dataTableOutput(paste0(specLabel, "_summTable_monthCollisions_Option1")),
-                              style = "font-size: 90%; width: 100%")
-                   )
-                 ),
-                 br(),
-                 br(),
-                 hr(),
-                 
-                 fluidRow(
-                   column(6, 
-                          br(),br(),br(),br(),
-                          plotOutput(paste0(specLabel, "_plot_monthCollisions_Option2"), width = "100%")
-                   ),
-                   
-                   column(6, 
-                          align="center",
-                          div(dataTableOutput(paste0(specLabel, "_summTable_monthCollisions_Option2")),
-                              style = "font-size: 90%; width: 100%")
-                   )
-                 ),
-                 br(),
-                 br(),
-                 hr(),
-                 
-                 fluidRow(
-                   column(6, 
-                          br(),br(),br(),br(),
-                          plotOutput(paste0(specLabel, "_plot_monthCollisions_Option3"), width = "100%")
-                   ),
-                   column(6, 
-                          align="center",
-                          div(dataTableOutput(paste0(specLabel, "_summTable_monthCollisions_Option3")),
-                              style = "font-size: 90%; width: 100%")
-                   )
-                 )
-             )
-           )
-  )
-}
-
 
 
 
@@ -749,6 +376,14 @@ betaParamsAlert <- function(p, stdv, varName, varTag, session){
 
 
 
+# Function for sampling lines in a WF area.  ------------------------------
+
+GetSampleProp <- function(maskedlines,samplesize,WFarea){
+  testsample <- sample(length(maskedlines[[1]]),samplesize,replace=T)
+  testsample <- maskedlines[[1]][testsample]
+  tt <- testsample[WFarea,]
+  return(tt)
+}
 
 
 # Functions for customized output from distribution functions  ------------

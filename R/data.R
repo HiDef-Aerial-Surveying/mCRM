@@ -21,7 +21,7 @@
 #'   \item{speciesname}{the name of the species, under which a nested list of parameters is found}
 #'   ...
 #' }
-"dfltSpecSizeAndSpeed"
+"defaultSpeciesValues"
 
 
 #' Temporary template table for windfarm parameters by month
@@ -81,6 +81,46 @@
 #' }
 "EMOD_OSWFs_WGS84_UK"
 
+#' Scotwind lease areas
+#'
+#' A spatial polygon of Scotwind offshore lease areas
+#' 
+#' @format A spatial polygon dataframe
+#' \describe{
+#'   \item{COUNTRY}{Country that wind farm is associated with (should be UK only)}
+#'   \item{NAME}{The name of the OSWF}
+#'   \item{N_TURBINES}{Number of planned or operational turbines at a site}
+#'   \item{POWER_MW}{Approximate power production of site}
+#'   \item{STATUS}{Legal status of site (Planned, Approved, Production, or Dismantled)}
+#'   \item{YEAR}{Year windfarm went into production}
+#'   \item{COAST_DIST}{Distance to coast of polygon centroid}
+#'   \item{AREA_SQKM}{Total windfarm area in kilometers squared}
+#'   \item{NOTES}{Additional notes}
+#'   \item{Shape_Leng}{Longest length of the polygon}
+#'   \item{Shape_Area}{Area in hectares}
+#' }
+"SCOTWIND_SHAPES"
+
+
+#' Scotwind lease areas merged to EMOD
+#'
+#' A spatial polygon of Scotwind offshore lease areas
+#' 
+#' @format A spatial polygon dataframe
+#' \describe{
+#'   \item{COUNTRY}{Country that wind farm is associated with (should be UK only)}
+#'   \item{NAME}{The name of the OSWF}
+#'   \item{N_TURBINES}{Number of planned or operational turbines at a site}
+#'   \item{POWER_MW}{Approximate power production of site}
+#'   \item{STATUS}{Legal status of site (Planned, Approved, Production, or Dismantled)}
+#'   \item{YEAR}{Year windfarm went into production}
+#'   \item{COAST_DIST}{Distance to coast of polygon centroid}
+#'   \item{AREA_SQKM}{Total windfarm area in kilometers squared}
+#'   \item{NOTES}{Additional notes}
+#'   \item{Shape_Leng}{Longest length of the polygon}
+#'   \item{Shape_Area}{Area in hectares}
+#' }
+"Scotwind_Merged"
 
 
 

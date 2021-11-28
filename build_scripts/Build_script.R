@@ -25,25 +25,42 @@ library(devtools)
 library(shinyStore)
 
 
+defaultSpeciesValues <- readxl::read_xlsx("data-raw/mCRM_bird_parameter_Defaults_TEMP.xlsx")
+
+for(i in 1:nrow(defaultSpeciesValues)){
+  migmonths <- unlist(str_split(defaultSpeciesValues$Post_breed_mig_months[i],","))
+  if(!is.na(migmonths)){
+    startmonth <- month.abb[which(tolower(month.name) == migmonths[1])]
+    endmonth <- month.abb[which(tolower(month.name) == migmonths[length(migmonths)])]
+    mnthstring <- paste(startmonth,endmonth,sep=" - ")
+    defaultSpeciesValues$Post_breed_mig_months[i] <- mnthstring    
+  }
+}
+
+for(i in 1:nrow(defaultSpeciesValues)){
+  migmonths <- unlist(str_split(defaultSpeciesValues$Pre_breed_mig_months[i],","))
+  if(!is.na(migmonths)){
+    startmonth <- month.abb[which(tolower(month.name) == migmonths[1])]
+    endmonth <- month.abb[which(tolower(month.name) == migmonths[length(migmonths)])]
+    mnthstring <- paste(startmonth,endmonth,sep=" - ")
+    defaultSpeciesValues$Pre_breed_mig_months[i] <- mnthstring    
+  }
+}
+
+for(i in 1:nrow(defaultSpeciesValues)){
+  migmonths <- unlist(str_split(defaultSpeciesValues$Other_mig_months[i],","))
+  if(!is.na(migmonths)){
+    startmonth <- month.abb[which(tolower(month.name) == migmonths[1])]
+    endmonth <- month.abb[which(tolower(month.name) == migmonths[length(migmonths)])]
+    mnthstring <- paste(startmonth,endmonth,sep=" - ")
+    defaultSpeciesValues$Other_mig_months[i] <- mnthstring    
+  }
+}
 
 
-dfltSpecSizeAndSpeed <- data.table::fread("data/build_data/default species dimensions and flightspeeds.csv") %>%
-  dplyr::mutate(specLabel = stringr::str_replace_all(Species, pattern = "\\s|-", replacement = "_")) %>%
-  split(.$specLabel) %>%
-  purrr::map(function(x){
-    list(
-      bodyLt_E = x$length_midpoint_m,
-      bodyLt_SD = x$length_SD_m,
-      bodyLt_ref = x$lenght_ref,
-      wngSpan_E = x$wingspan_midpoint_m,
-      wngSpan_SD = x$wingspan_SD_m,
-      wngSpan_ref = x$wingspan_ref, 
-      flSpeed_E = x$flightspeed_minpersec, 
-      flSpeed_ref = x$flightspeed_ref
-    )
-  })
 
-usethis::use_data(dfltSpecSizeAndSpeed)
+usethis::use_data(defaultSpeciesValues,overwrite = T)
+
 
 #### Start up values for the app
 
