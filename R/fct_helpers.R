@@ -40,42 +40,6 @@ NormNumericInput <- function(paramID,  varName, infoId="foo", infoText ="", #spe
 
 
 
-#' @export
-divUI_monthDens_PctlsAndSample_DownButtons <- function(introText, fileInputId, fileInputPopUpText, downButtOutputId){
-  fluidRow(
-    column(12, helpText(introText)),
-    br(),
-    column(3,
-           tipify(      
-             fileInput(inputId = fileInputId,
-                       label = "Upload file",
-                       multiple = FALSE,
-                       accept = c("text/csv",
-                                  "text/comma-separated-values,text/plain",
-                                  ".csv")),
-             title = fileInputPopUpText,
-             placement = "left", trigger = "hover", options = list(container = "body")
-           )
-    ),
-    column(1,
-           style = "margin-top: 25px; margin-left: -10px",
-           downloadButton(outputId = downButtOutputId, label = NULL, class = "butt"),
-           tags$head(tags$style(".butt{background-color:#4570a5;
-                                    color: #efecec}
-                                    .butt:hover{
-                                    background-color:#4570a5;
-                                    color: #efecec}"
-           ))
-    ),
-    
-    shinyBS::bsTooltip(id = downButtOutputId,
-              title = "Template dataset. Fill in, save locally and upload on the adjacent field",
-              options = list(container = "body"),
-              placement = "right", trigger = "hover")
-  )
-}
-
-
 
 # Functions for Plotting --------------------------------------------------
 
@@ -376,16 +340,6 @@ betaParamsAlert <- function(p, stdv, varName, varTag, session){
 
 
 
-# Function for sampling lines in a WF area.  ------------------------------
-
-GetSampleProp <- function(maskedlines,samplesize,WFarea){
-  testsample <- sample(length(maskedlines[[1]]),samplesize,replace=T)
-  testsample <- maskedlines[[1]][testsample]
-  tt <- testsample[WFarea,]
-  return(tt)
-}
-
-
 # Functions for customized output from distribution functions  ------------
 
 # generate random samples from a beta distribution, parameterized as mean and sd, and returning NAs if conditions are not met
@@ -430,70 +384,6 @@ rbeta_dmp <- function(n, p, sd){
   }
   return(out)
 }
-
-
-
-# generate random samples from a truncated normal, returning NAs if conditions are not met
-rtnorm_dmp <- function(n, mean=0, sd=1, lower=-Inf, upper=Inf){
-  
-  if(is.na(mean)|is.na(sd)){
-    out <- rep(NA, n)
-    warning("NA values for mu and/or stdev - NAs produced")
-  }else{
-    if(sd >= 0){
-      if(sd == 0 & mean == lower){
-        out <- rep(lower, n)
-      }
-      if(sd == 0 & mean < lower){
-        out <- rep(NA, n)
-        warning("mu < lower & SD = 0 - NAs produced")
-      }
-      if(sd == 0 & mean > lower){
-        #out <- qtnorm(p, mean = mean, sd = sd, lower = lower, upper = upper)
-        out <- rep(mean, n)
-      }
-      if(sd > 0){
-        out <- rtnorm(n, mean = mean, sd = sd, lower = lower, upper = upper)
-      }
-    }else{
-      warning("SD < 0 - NAs produced")
-      out <- rep(NA, n)
-    }
-  }
-  
-  return(out)
-}
-
-
-
-qtnorm_dmp <- function(p, mean=0, sd=1, lower=-Inf, upper=Inf){
-  
-  if(is.na(mean)|is.na(sd)){
-    out <- rep(NA, length(p))
-    warning("NA values for mu and/or stdev - NAs produced")
-  }else{
-    if(sd >= 0){
-      if(sd == 0 & mean == lower){
-        out <- rep(lower, length(p))
-      }
-      if(sd == 0 & mean < lower){
-        out <- rep(NA, length(p))
-        warning("mu < lower & SD = 0 - NAs produced")
-      }
-      if(sd == 0 & mean > lower){
-        out <- rep(mean, length(p))
-      }
-      if(sd > 0){
-        out <- qtnorm(p, mean = mean, sd = sd, lower = lower, upper = upper)
-      }
-    }else{
-      warning("SD < 0 - NAs produced")
-      out <- rep(NA, length(p))
-    }
-  }
-  return(out)
-}
-
 
 
 

@@ -324,7 +324,7 @@ app_server <- function( input, output, session ) {
       
     )
     
-    #browser()
+    
     ### 10000 lines, 2000 samples with 500 bootstraps from sensitivity analysis Sept 2021
     ### This samples each windfarm x species combination to generation populations
     
@@ -344,6 +344,7 @@ app_server <- function( input, output, session ) {
     
     withProgress(message = "Generating population estimates",value=0,{
       for(k in 1:nrow(Population_estimates)){
+        print(k)
         incProgress(1/nrow(Population_estimates),detail=paste("running", Population_estimates$Species[k], "in", Population_estimates$`Wind farm`[k] ))
         Specnm <- stringr::str_replace_all(defaultSpeciesValues$Scientific_name[defaultSpeciesValues$Common_name == Population_estimates$Species[k]]," ","_")
         btonm <- stringr::str_replace_all(defaultSpeciesValues$Sp_code[defaultSpeciesValues$Common_name == Population_estimates$Species[k]]," ","_")
@@ -356,8 +357,9 @@ app_server <- function( input, output, session ) {
         
         withProgress(message = "bootstrapping", value=0, {
           for(j in 1:boot.iters){
+            print(j)
             incProgress(1/boot.iters)
-            PopVal <- popSizemn#rnorm(1,popSizemn,popSizesd)
+            PopVal <- popSizemn
             Estimates[j] <- ceiling(length(GetSampleProp(speclines,samplesize,WFshapes[Population_estimates$`Wind farm`[k],]))/samplesize * PopVal)
             
           }
@@ -367,6 +369,8 @@ app_server <- function( input, output, session ) {
         
       }
     })
+    
+    
     
     output$hotInput_output_population_scenarios <- renderRHandsontable(
       

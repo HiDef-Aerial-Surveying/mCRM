@@ -24,41 +24,6 @@
 "defaultSpeciesValues"
 
 
-#' Temporary template table for windfarm parameters by month
-#'
-#' Temporary template table for windfarm parameters by month
-#'
-#' @format A dataframe with 12 variables (for months)
-#' \describe{
-#'   \item{monthname}{Rows for wind availability, mean downtime and sd of downtime}
-#'   ...
-#' }
-"turbineOpTempTable"
-
-
-
-#' Start up template for bootstrap outputs
-#'
-#' A template for what bootstrap outputs should be formatted as
-#'
-#' @format A dataframe with 201 columns 
-#' \describe{
-#'   \item{bootId_n,...}{bootstrapped height of a bird for nth bootstrap}
-#'   ...
-#' }
-"template_FHD"
-
-
-#' Template for the bootstrapped monthly densities
-#'
-#' A template dataset
-#'
-#' @format A dataframe with 12 variables (for months)
-#' \describe{
-#'   \item{monthname}{Rows for wind availability, mean downtime and sd of downtime}
-#'   ...
-#' }
-"template_monthDens_samples"
 
 #' UK Offshore wind farms
 #'

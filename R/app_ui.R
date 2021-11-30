@@ -1,4 +1,3 @@
-#' The application User-Interface
 #' 
 #' @param request Internal parameter for `{shiny}`. 
 #'     DO NOT REMOVE.
@@ -123,7 +122,7 @@ app_ui <- function(request) {
       ),
       hr(),
       menuItem(
-        "Step 4: Simulation & Results", tabName = "tab_simulation", icon = icon("bar-chart")
+        "Step 4: Simulation & Results", tabName = "tab_simulation", icon = icon("chart-bar")
       ),
       hr(),
 
