@@ -81,12 +81,6 @@ mod_WindFarmFeats_ui <- function(id){
           box(width = 12,
               splitLayout(
                 
-                # --- Turbine power/model
-                numericInput(width = "60%",
-                             inputId = ns("numInput_turbinePars_turbinePower"),
-                             label = label.help("Turbine Model (MW)", ns("lbl_turbinePower")),
-                             value = 1, min = 1),
-                
                 # ---- Number of blades
                 numericInput(width = "60%",
                              inputId = ns("numInput_turbinePars_numBlades"),
@@ -107,9 +101,6 @@ mod_WindFarmFeats_ui <- function(id){
                 
               )
           ),
-          shinyBS::bsTooltip(id = ns("lbl_turbinePower"),
-                             title = paste0("The power output of each turbine"),
-                             options = list(container = "body"), placement = "right", trigger = "hover"),
           shinyBS::bsTooltip(id = ns("lbl_numBlades"),
                              title = paste0("Number of blades in each turbine"),
                              options = list(container = "body"), placement = "right", trigger = "hover"),
@@ -196,14 +187,6 @@ mod_WindFarmFeats_server <- function(id, data){
   moduleServer(
     id,
     function(input,output,session){
-      
-      observe({
-        shp <- Scotwind_Merged[Scotwind_Merged$NAME == nid,]
-        nturb <- ifelse(shp$N_TURBINES==0,0.00001,shp$N_TURBINES)
-        pow <- shp$POWER_MW
-        updateNumericInput(inputId="numInput_turbinePars_turbinePower",value=floor(pow/nturb))
-      })
-      
       
       observe({
         ## Calculate centroid latitude of wind farm and put in input

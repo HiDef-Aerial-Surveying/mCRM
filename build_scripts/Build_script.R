@@ -22,10 +22,10 @@ library(RColorBrewer)
 library(pracma)
 library(heatmaply)
 library(devtools)
-library(shinyStore)
 
 
-defaultSpeciesValues <- readxl::read_xlsx("data-raw/mCRM_bird_parameter_Defaults_TEMP.xlsx")
+
+defaultSpeciesValues <- readxl::read_xlsx("data-raw/mCRM_bird_parameter_Defaults.xlsx")
 
 for(i in 1:nrow(defaultSpeciesValues)){
   migmonths <- unlist(str_split(defaultSpeciesValues$Post_breed_mig_months[i],","))
@@ -80,40 +80,11 @@ startUpValues <- list(
   windFarmPars = list(
     windfarmPars_nTurbines = 100, windfarmPars_Latitude = 55.8, windfarmPars_width = 10,tidalOffset = 2.5,
     upWindOffset_perc = 50
-  ),
-  
-  speciesPars = list(
-    Black_legged_Kittiwake = list(
-      meanDensity = c(0.97, 1.04, 1.15, 0.48, 0.56, 0.63, 0.68, 0.64, 0.53, 1.20, 1.02, 0.99),
-      sdDensity = c(0.67, 0.75, 0.78, 0.36, 0.58, 0.45, 0.47, 0.47, 0.39, 0.78, 0.61, 0.7),
-      trucDensity = c(0,2), bodyLt_E = 0.39, bodyLt_SD = 0.005, wngSpan_E = 1.08, wngSpan_SD = 0.04,
-      flSpeed_E = 7.26,  flSpeed_SD = 1.5, noctAct_E = 0.033, noctAct_SD = 0.0045, CRHeight_E = 0.06,
-      CRHeight_SD = 0.009, basicAvoid_E = 0.989, basicAvoid_SD = 0.001, extAvoid_E = 0.967, extAvoid_SD = 0.002,
-      flType = "Flapping"
-    ), 
-    Arctic_Skua = dfltSpecSizeAndSpeed$Arctic_Skua, 
-    Atlantic_Puffin = dfltSpecSizeAndSpeed$Atlantic_Puffin, 
-    Black_throated_Diver = dfltSpecSizeAndSpeed$Black_throated_Diver,
-    Common_Guillemot = dfltSpecSizeAndSpeed$Common_Guillemot,
-    Common_Gull = dfltSpecSizeAndSpeed$Common_Gull,
-    Common_Tern = dfltSpecSizeAndSpeed$Common_Tern,
-    Cormorant = dfltSpecSizeAndSpeed$Cormorant,
-    European_Shag = dfltSpecSizeAndSpeed$European_Shag,
-    Great_Black_backed_Gull = dfltSpecSizeAndSpeed$Great_Black_backed_Gull,
-    Great_Skua = dfltSpecSizeAndSpeed$Great_Skua,
-    Herring_Gull = dfltSpecSizeAndSpeed$Herring_Gull,
-    Lesser_Black_Backed_Gull = dfltSpecSizeAndSpeed$Lesser_Black_Backed_Gull,
-    Little_Gull = dfltSpecSizeAndSpeed$Little_Gull,
-    Manx_Shearwater = dfltSpecSizeAndSpeed$Manx_Shearwater,
-    Northern_Fulmar = dfltSpecSizeAndSpeed$Northern_Fulmar,
-    Northern_Gannet = dfltSpecSizeAndSpeed$Northern_Gannet,
-    Razorbill = dfltSpecSizeAndSpeed$Razorbill,
-    Red_throated_Diver = dfltSpecSizeAndSpeed$Red_throated_Diver
   )
 )
 
 
-usethis::use_data(startUpValues)
+usethis::use_data(startUpValues,overwrite = T)
 
 
 # template data sets
@@ -135,6 +106,3 @@ turbineOpTempTable <- data.frame(array(0, dim = c(3, 12), dimnames = list(c("Win
 usethis::use_data(turbineOpTempTable)
 
 
-
-testvariable <- "Hello there"
-usethis::use_data(testvariable)

@@ -10,8 +10,10 @@
 #' @import leaflet
 #' @import tidyr
 #' @import tibble
+#' @import stochLAB
 #' @import foreach
 #' @noRd
+#' 
 #' 
 app_server <- function( input, output, session ) {
 
@@ -97,7 +99,7 @@ app_server <- function( input, output, session ) {
     if(length(WFshapelist$wfs) == 0){
       lapply(WFshapes()$NAME,function(x) {
         id_name <- stringr::str_replace_all(x," ","_")
-        appendTab("windfarm_Tabs",tabPanel(x,mod_WindFarmFeats_ui(id_name)))
+        appendTab("windfarm_Tabs",tabPanel(x,mod_WindFarmFeats_ui(id_name)),select = TRUE)
         mod_WindFarmFeats_server(id_name,data=rv)
       })
       WFshapelist$wfs <- WFshapes()$NAME
@@ -111,7 +113,7 @@ app_server <- function( input, output, session ) {
       for(i in WFshapes()$NAME){
         if(i %!in% WFshapelist$wfs){
           id_name <- stringr::str_replace_all(i," ","_")
-          appendTab("windfarm_Tabs",tabPanel(i,mod_WindFarmFeats_ui(id_name)))
+          appendTab("windfarm_Tabs",tabPanel(i,mod_WindFarmFeats_ui(id_name)),select=TRUE)
           mod_WindFarmFeats_server(id_name,data  = rv)
         }
       }
@@ -133,6 +135,7 @@ app_server <- function( input, output, session ) {
   # This will add bird species tabs when the action button is clicked
   # It should only add tabs if they aren't already on the list
   observeEvent(input$button_update_Species_tabs, {
+    
     if(length(birdspecieslist$birdspcs) == 0){
       lapply(BirdNames(),function(x) {
         
@@ -225,7 +228,7 @@ app_server <- function( input, output, session ) {
                Latitude = eval(parse(text=paste0("input$`",x,"-numInput_windfarmPars_Latitude`"))),
                wfWidth = eval(parse(text=paste0("input$`",x,"-numInput_windfarmPars_width`"))),
                PropUpwind = eval(parse(text=paste0("input$`",x,"-numInput_windfarmPars_upWindDownWindProp`"))),
-               TPower = eval(parse(text=paste0("input$`",x,"-numInput_turbinePars_turbinePower`"))),
+               nTurbines = eval(parse(text=paste0("input$`",x,"-numInput_windfarmPars_nTurbines`"))),
                nBlades = eval(parse(text=paste0("input$`",x,"-numInput_turbinePars_numBlades`"))),
                rRadius = eval(parse(text=paste0("input$`",x,"-numInput_turbinePars_rotRadius`"))),
                bWidth = eval(parse(text=paste0("input$`",x,"-numInput_turbinePars_maxBladeWdth`"))),
@@ -285,7 +288,7 @@ app_server <- function( input, output, session ) {
     output$hotInput_output_bird_scenarios <- renderRHandsontable(
       
       bird_scenario_table %>%
-        rhandsontable(rowHeaders=NULL, colHeaders = c("Species",  #"Windfarm",
+        rhandsontable(selectCallback = TRUE,rowHeaders=NULL, colHeaders = c("Species",  
                                                       "Flight","Body Length",
                                                       "Body Length SD", "Wingspan", "Wingspan SD",
                                                       "Flight speed", "Flight speed SD",
@@ -312,8 +315,8 @@ app_server <- function( input, output, session ) {
     output$hotInput_output_wf_scenarios <- renderRHandsontable(
       
       wind_scenario_table %>%
-        rhandsontable(rowHeaders=NULL, colHeaders = c("Wind farm","Latitude","Width","Proportion upwind flight",
-                                                      "Turbine power","Number of blades",
+        rhandsontable(selectCallback = TRUE,rowHeaders=NULL, colHeaders = c("Wind farm","Latitude","Width","Proportion upwind flight",
+                                                      "Number of turbines","Number of blades",
                                                       "Rotor radius", "Blade width",
                                                       "Rotation Speed", "Rotation Speed SD", "Blade Pitch", "Blade Pitch SD",
                                                       paste0(month.abb," wind available"),paste0(month.abb," mean downtime"),
@@ -360,7 +363,7 @@ app_server <- function( input, output, session ) {
             print(j)
             incProgress(1/boot.iters)
             PopVal <- popSizemn
-            Estimates[j] <- ceiling(length(GetSampleProp(speclines,samplesize,WFshapes[Population_estimates$`Wind farm`[k],]))/samplesize * PopVal)
+            Estimates[j] <- ceiling(length(stochLAB::GetSampleProp(speclines,samplesize,WFshapes[Population_estimates$`Wind farm`[k],]))/samplesize * PopVal)
             
           }
         })
@@ -375,15 +378,165 @@ app_server <- function( input, output, session ) {
     output$hotInput_output_population_scenarios <- renderRHandsontable(
       
       Population_estimates %>%
-        rhandsontable(rowHeaders=NULL, colHeaders = c("Wind farm","Species", "Population estimate","Population estimate (SD)")) %>%
+        rhandsontable(selectCallback = TRUE,rowHeaders=NULL, colHeaders = c("Wind farm","Species", "Population estimate","Population estimate (SD)")) %>%
         hot_cols() %>%
         hot_table(highlightCol = TRUE, highlightRow = TRUE) %>%
         hot_context_menu(allowRowEdit = TRUE, allowColEdit = FALSE)
       
+      
     )
     
     
+    
+    
   })
+  
+  
+
+# Download scenarios controls ---------------------------------------------
+
+  # Set output from windfarm table, bird table, and scenario table to 
+  # R objects in reactive forms
+  
+  WindFarmsData <- reactive({
+    Df <- hot_to_r(input$hotInput_output_wf_scenarios)
+    names(Df) <- c("Wind farm","Latitude","Width","Proportion upwind flight",
+                   "Number of turbines","Number of blades",
+                   "Rotor radius", "Blade width",
+                   "Rotation Speed", "Rotation Speed SD", "Blade Pitch", "Blade Pitch SD",
+                   paste0(month.abb," wind available"),paste0(month.abb," mean downtime"),
+                   paste0(month.abb," SD downtime"))
+    
+    return(Df)
+  })
+  BirdsData <- reactive({
+    Df <- hot_to_r(input$hotInput_output_bird_scenarios)
+    names(Df) <- c("Species",  
+                   "Flight","Body Length",
+                   "Body Length SD", "Wingspan", "Wingspan SD",
+                   "Flight Speed", "Flight Speed SD",
+                   "Avoidance", "Avoidance SD", "PCH","Biogeographic population",
+                   "Proportion in UK", "Total population in UK", 
+                   "PrBMigration","PoBMigration",
+                   "OMigration")
+    
+    return(Df)
+  })
+  
+  ScenariosData <- reactive({
+    Df <- hot_to_r(input$hotInput_output_population_scenarios)
+    names(Df) <- c("Wind farm","Species", "Population estimate","Population estimate (SD)")
+    return(Df)
+  })
+  
+  
+  ## Handler for the modal to input the filename
+  observeEvent(input$button_download_scenarios_modal,{
+    showModal(modalDialog(
+      title = "Download model scenario worksheet",
+      textInput("txtInput_dwnld_scenario_name",label="Input filename for download (e.g., model_scenario_1)"),
+      downloadButton("button_download_scenarios","Download worksheet"),
+      easyClose=TRUE
+    ))
+  })
+  
+  
+  ## The download handler for the scenarios
+  output$button_download_scenarios <- downloadHandler(
+    
+    filename = function() {
+      paste(input$txtInput_dwnld_scenario_name,".xlsx", sep = "")
+    },
+    content = function(file) {
+      wb <- openxlsx::createWorkbook()
+      
+      openxlsx::addWorksheet(wb,sheetName="BirdData")
+      openxlsx::addWorksheet(wb,sheetName="TurbineData")
+      openxlsx::addWorksheet(wb,sheetName="CountData")
+      
+      openxlsx::writeData(wb,sheet="BirdData",BirdsData())
+      openxlsx::writeData(wb,sheet="TurbineData",WindFarmsData())
+      openxlsx::writeData(wb,sheet="CountData",ScenariosData())
+      openxlsx::saveWorkbook(wb,file,overwrite=TRUE)
+    }
+  )
+ 
+  
+  
+  
+  
+
+  # Create reactive values list for storing model output --------------------
+
+  mcrmOut <- reactiveValues(
+    mCRM_output_ls = NULL
+  )
+  
+  
+  # Run compiled simulation -------------------------------------------------
+  
+  observeEvent(input$actButtonInput_simulPars_GO,{
+    
+    BirdDat <- BirdsData()
+    TurbineDat <- WindFarmsData()
+    CountDat <- ScenariosData()
+    names(BirdDat) <- str_replace_all(names(BirdDat)," ","")
+    names(TurbineDat) <- str_replace_all(names(TurbineDat)," ","")
+    names(CountDat) <- str_replace_all(names(CountDat)," ","")
+    
+    
+    
+    outputs <- matrix(nrow=nrow(CountDat),ncol=5)
+    
+    for(i in 1:nrow(CountDat)){
+      
+      spp_name <- CountDat$Species[i]
+      wf_name <- CountDat$Windfarm[i]
+      
+      BirdData <- BirdDat %>% dplyr::filter(Species == spp_name)
+      TurbineData <- TurbineDat %>% dplyr::filter(Windfarm == wf_name)
+      CountData <- CountDat[i,]
+      
+      outs <- mig_stoch_crm(BirdData,TurbineData,CountData,iter=1000,spp_name,LargeArrayCorrection = T)
+      
+      
+      ## Send outputs to matrix
+      outputs[i,1] <- spp_name
+      outputs[i,2] <- wf_name
+      outputs[i,3] <- paste(round(mean(outs[,1],na.rm=T),3), "\u00B1", round(sd(outs[,1],na.rm=T),3))
+      outputs[i,4] <- paste(round(mean(outs[,2],na.rm=T),3), "\u00B1", round(sd(outs[,2],na.rm=T),3))
+      outputs[i,5] <- paste(round(mean(outs[,3],na.rm=T),3), "\u00B1", round(sd(outs[,3],na.rm=T),3))
+      
+    }
+    outputs <- data.frame(outputs)
+    names(outputs) <- c('species',"windfarm","PrBMigration","PoBMigration","Omigration")
+    
+    
+    
+    PreBreedout <- reshape2::dcast(outputs[,c(1:3)],formula = species ~windfarm)
+    PostBreedout <- reshape2::dcast(outputs[,c(1,2,4)],formula = species ~windfarm)
+    Otherout <- reshape2::dcast(outputs[,c(1,2,5)],formula = species ~windfarm)
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    output$simResults_UI <- renderUI({
+      
+      
+      
+    })
+    
+    
+  })  
+  
+  
+  
   
   
 
@@ -461,6 +614,9 @@ app_server <- function( input, output, session ) {
     })
   })
   
+  
+  
+
   
   
   #' -----------------------------------------------------------------
@@ -772,168 +928,7 @@ app_server <- function( input, output, session ) {
   #' -----------------------------------------------------------------------
   
   #observeEvent(input$actButtonInput_simulPars_GO, {
-  observeEvent(rv$simCodeTrigger, ignoreInit = TRUE, {
-    
-    #--- step 1: safety check if the various types on input data are valid for proceeding to simulation ------ #
-    req(rv$speciesFieldFilled,
-        rv$densityDataPresent, 
-        rv$NAsFreeData,
-        rv$FHD_acceptable)
-    
-    
-    # --- step 2: house-cleanig - remove output files left from the previous run in the current session ------ #
-    
-    file.remove(list.files(path2ShinyOut_Inputs, full.names = TRUE))
-    file.remove(list.files(path2ShinyOut_Outputs, full.names = TRUE))
-    file.remove(list.files(path2Outputs_results, full.names = TRUE, recursive = TRUE))
-    
-    
-    
-    #--- step 3: write out data in files as required for the model  ----- # 
-    
-    rv$monthDensData_model %>%
-      mutate(export = walk2(userOption, data, function(x, y){
-        
-        if(x == "truncNorm"){
-          fwrite(y, "data/CountData.csv")
-          fwrite(y, file.path(path2ShinyOut_Inputs, "birdDensityData_truncnorm.csv"))
-        }
-        
-        if(x == "reSamp"){
-          fwrite(y, "data/birdDensityData_samples.csv")
-          fwrite(y, file.path(path2ShinyOut_Inputs, "birdDensityData_samples.csv"))
-        }
-        
-        if(x == "pcntiles"){
-          fwrite(y, "data/birdDensityData_refPoints.csv")
-          fwrite(y, file.path(path2ShinyOut_Inputs, "birdDensityData_refPoints.csv"))
-        }
-        
-      }))
-    
-    
-    # --- rotor speed and pitch vs windspeed
-    windPowerData <- left_join(hot_to_r(input$hotInput_turbinePars_rotationVsWind), # produces "Warning in asMethod(object) : NAs introduced by coercion"
-                               hot_to_r(input$hotInput_turbinePars_pitchVsWind),    # produces "Warning in asMethod(object) : NAs introduced by coercion"
-                               by = "windSpeed") %>%
-      dplyr::rename(Wind = windSpeed, Rotor = rotationSpeed, Pitch = bladePitch) %>%
-      drop_na()
-    
-    
-    
-    # --- simulation Options
-    simOptions <- tibble(
-      iterations = input$sldInput_simulPars_numIter, 
-      largeArrayCorrection = ifelse(input$chkBoxInput_simulPars_largeArrarCorr==TRUE, "yes", "no")
-    )
-    
-    
-    # model function expects data to be provided in csv files, so saving them out for now to avoid code inconsistencies 
-    # Should change model function to expect data.frames instead of files once it's final version is established
-    fwrite(rv$birdata_model, "data/BirdData.csv")
-    fwrite(rv$turbineData_model, "data/TurbineData.csv")
-    fwrite(windPowerData, paste0("data/windpower_", input$numInput_turbinePars_turbinePower, ".csv"))
-    
-    
-    # save inputs to the user's downloadable folder - repeating the previous step (except the changes to the turbine data) makes 
-    # code a bit inefficient, but the previous step should be temporary
-    fwrite(rv$birdata_model, file.path(path2ShinyOut_Inputs, "BirdData.csv"))
-    rv$turbineData_model %>% select(-c(RotorRadiusSD, HubHeightAddSD, BladeWidthSD)) %>% dplyr::rename(airGap = HubHeightAdd) %>%
-      fwrite(., file = file.path(path2ShinyOut_Inputs, "TurbineData.csv"))
-    fwrite(windPowerData, file.path(path2ShinyOut_Inputs, paste0("windpower_", input$numInput_turbinePars_turbinePower, ".csv")))
-    fwrite(rv$windfarmData_model, file.path(path2ShinyOut_Inputs, "windfarmData.csv"))
-    fwrite(simOptions, file.path(path2ShinyOut_Inputs, "simOptions.csv"))
-    
-    
-    # ----- step 4: Set progress bar ----- #
-    
-    # Create a Progress objects for species and iterations within each species
-    progress_Spec <- Progress$new()
-    progress_Iter <- Progress$new()
-    
-    progress_Spec$set(message = "Processing ", value = 0)
-    progress_Iter$set(message = "Simulating...", value = 0)  # "Going through iterations"
-    
-    on.exit({
-      progress_Iter$close()
-      progress_Spec$close()
-    })
-    
-    
-    # callback functions to update progress on species.
-    updateProgress_Spec <- function(value = NULL, detail = NULL) {
-      progress_Spec$set(value = value, detail = detail)
-    }
-    
-    
-    # callback functions to update progress on iterations. Each time updateProgress_Iter() is called, 
-    # it moves the bar 1/nth of the total distance.
-    updateProgress_Iter <- function(value = NULL, detail = NULL) {
-      progress_Iter$set(value = value, detail = detail)
-    }
-    
-    
-    # ----- step 5: run simulation function ----- # 
-    
-    if(1){
-      rv$sCRM_output_ls <- stochasticBand(
-        workingDirectory="sCRM/",
-        results_folder = path2Outputs_results,
-        BirdDataFile = "data/BirdData.csv",
-        TurbineDataFile = "data/TurbineData.csv",
-        CountDataFile = "data/CountData.csv",
-        FlightDataFile = "data/FlightHeight.csv",
-        iter = input$sldInput_simulPars_numIter, 
-        CRSpecies = slctSpeciesTags()$specLabel, 
-        TPower = rv$windfarmData_model$targetPower_MW, #rv$windfarmData_model$nTurbines*input$numInput_turbinePars_turbinePower,
-        LargeArrayCorrection = ifelse(input$chkBoxInput_simulPars_largeArrarCorr==TRUE, "yes", "no"), 
-        WFWidth = rv$windfarmData_model$width_km,
-        Prop_Upwind = rv$windfarmData_model$upwindFlights_prop/100, # convert % (user input) to proportion (expected by model function)
-        Latitude = rv$windfarmData_model$latitude_deg,
-        TideOff = rv$windfarmData_model$TidalOffset_m,
-        windSpeedMean = input$numInput_miscPars_windSpeed_E_, 
-        windSpeedSD = input$numInput_miscPars_windSpeed_SD_,
-        #windPowerData = windPowerData,
-        updateProgress_Spec,  # pass in the updateProgress function so that it can update the progress indicator.
-        updateProgress_Iter,
-        DensityOpt = rv$monthDensOpt_model # pass in the user options for bird density data
-      )
-    }
-    
-    
-    
-    # Alternative parameterisation etc to match Band spreadsheet --------------
-    
-    if(0){
-      
-      source("BandModel_function_band_comparison.R")
-      
-      rv$sCRM_output_ls <- stochasticBand_compare(
-        workingDirectory="sCRM/",
-        results_folder = path2Outputs_results,
-        BirdDataFile = "data/BirdData.csv",
-        TurbineDataFile = "band_comparison_inputs/TurbineData.csv",
-        CountDataFile = "band_comparison_inputs//CountData.csv",
-        FlightDataFile = "data/FlightHeight.csv",
-        iter = 2, 
-        CRSpecies = "Black_legged_Kittiwake", 
-        TPower = rv$windfarmData_model$targetPower_MW, #rv$windfarmData_model$nTurbines*input$numInput_turbinePars_turbinePower,
-        LargeArrayCorrection = "yes",
-        WFWidth = 10,
-        Prop_Upwind = 0.5, # convert % (user input) to proportion (expected by model function)
-        Latitude = 55.8,
-        TideOff = 2.5,
-        windSpeedMean = input$numInput_miscPars_windSpeed_E_, 
-        windSpeedSD = input$numInput_miscPars_windSpeed_SD_,
-        #windPowerData = windPowerData,
-        updateProgress_Spec,  # pass in the updateProgress function so that it can update the progress indicator.
-        updateProgress_Iter,
-        DensityOpt = rv$monthDensOpt_model # pass in the user options for bird density data
-      )
-    }    
-    
-    
-  })
+  #observeEvent(rv$simCodeTrigger, ignoreInit = TRUE, {})
   
   
   

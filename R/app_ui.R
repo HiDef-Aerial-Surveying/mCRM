@@ -174,7 +174,7 @@ app_ui <- function(request) {
                              selectizeInput("selectInput_builtin_wfList",
                                          label = "Select wind farms (Maximum 5)",
                                          choices = Scotwind_Merged$NAME[order(Scotwind_Merged$NAME)],
-                                         options = list(maxItems = 5L)
+                                         options = list(maxItems = 20L)
                              ),
                              
                              p("Click button to update the list of windfarms"),
@@ -254,11 +254,12 @@ app_ui <- function(request) {
                  column(3,
                         actionButton("button_generate_scenarios","Generate Scenarios", class="btn-lg btn-success")),
                  column(3,
-                        actionButton("button_download_scenarios","Download Scenarios", class="btn-lg btn-warning")),
+                        actionButton("button_download_scenarios_modal","Download Scenarios", class="btn-lg btn-warning")),
                  column(3,
                         actionButton("button_upload_scenarios","Upload Scenarios", class="btn-lg btn-primary")),
                  column(3,
-                        actionButton("button_download_scenario_worksheet","Download Scenario worksheet", class="btn-lg btn-info"))
+                        a(href='mCRM_worksheet.xlsx',"Download Scenario worksheet",download=NA,target="_blank",
+                          class="btn btn-default action-button btn-lg btn-info"))
                 ),
                 fluidRow(
                 style="padding-top:20px;",
