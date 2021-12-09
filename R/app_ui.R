@@ -23,6 +23,7 @@
 #' @import heatmaply
 #' @import leaflet
 #' @import stochLAB
+#' @importFrom DT dataTableOutput
 #' @noRd
 #' 
 
@@ -305,35 +306,50 @@ app_ui <- function(request) {
         
         tabItem(tabName="tab_simulation", class = "active",
                 fluidRow(
-                  box(title = "Simulation Options", width = 2, status = "primary", solidHeader = TRUE, #background = "aqua", 
-                      # checkboxInput(inputId = "chkBoxInput_simulPars_largeArrarCorr", label = tags$b("Apply large Array Correction"), 
-                      #               value = TRUE),
-                      
-                      tags$b(HTML(paste0("Large Array Correction", actionLink("lbl_arrayCorrect", label=NULL, 
-                                                                              icon=icon('info-circle'))))),
-                      shinyBS::bsTooltip(id = "lbl_arrayCorrect", 
-                                         title = paste0("Adjustment to the probability of bird collision to account for the depletion ",
-                                                        "of bird density in later rows of windfarms with a large array of turbines"),
-                                         options = list(container = "body"), placement = "right", trigger = "hover"),
-                      
-                      switchButton(inputId = "chkBoxInput_simulPars_largeArrarCorr",
-                                   label = "", 
-                                   value = TRUE, col = "GB", type = "OO"),
-                      
-                      hr(),
-                      sliderInput(inputId = "sldInput_simulPars_numIter", label = "Number of Iterations",
-                                  min = 1000, max = 5000, step = 100, value = 1000),
-                      
-                      hr(),
-                      actionButton(inputId = "actButtonInput_simulPars_GO", label = tags$b("Run Simulation"), 
-                                   icon = icon("cogs"), width = "100%")
-                  ),
+                  column(2,
+                         box(title = "Simulation Options", width = 12, status = "primary", solidHeader = TRUE, 
+                             
+                             tags$b(HTML(paste0("Large Array Correction", actionLink("lbl_arrayCorrect", label=NULL, 
+                                                                                     icon=icon('info-circle'))))),
+                             shinyBS::bsTooltip(id = "lbl_arrayCorrect", 
+                                                title = paste0("Adjustment to the probability of bird collision to account for the depletion ",
+                                                               "of bird density in later rows of windfarms with a large array of turbines"),
+                                                options = list(container = "body"), placement = "right", trigger = "hover"),
+                             
+                             switchButton(inputId = "chkBoxInput_simulPars_largeArrarCorr",
+                                          label = "", 
+                                          value = TRUE, col = "GB", type = "OO"),
+                             
+                             hr(),
+                             sliderInput(inputId = "sldInput_simulPars_numIter", label = "Number of Iterations",
+                                         min = 1000, max = 5000, step = 100, value = 1000),
+                             
+                             hr(),
+                             actionButton(inputId = "actButtonInput_simulPars_GO", label = tags$b("Run Simulation"), 
+                                          icon = icon("cogs"), width = "100%")
+                         ),
+                         box(title="Download Outputs",width=12,status="primary",solidHeader=TRUE,
+                             
+                             uiOutput("Simulation_Download")
+                             
+                             )
+                         
+                         ),
                   
                   
                   
-                  box(title = "Model Ouputs", width = 10, status = "primary", solidHeader = TRUE,
-                      uiOutput("simResults_UI")
-                  )
+                  column(10,
+                         box(title = "Pre-Breeding Outputs", width = 12, status = "primary", solidHeader = TRUE,
+                             DT::dataTableOutput("summTable_DT_PrB")
+                         ),
+                         box(title = "Post-Breeding Outputs", width = 12, status = "primary", solidHeader = TRUE,
+                             DT::dataTableOutput("summTable_DT_PoB")
+                         ),
+                         box(title = "Other migration Outputs", width = 12, status = "primary", solidHeader = TRUE,
+                             DT::dataTableOutput("summTable_DT_O")
+                         )
+                         )
+
                 )
         )
     ),

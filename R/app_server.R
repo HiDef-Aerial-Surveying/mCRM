@@ -12,6 +12,7 @@
 #' @import tibble
 #' @import stochLAB
 #' @import foreach
+#' @importFrom DT renderDataTable
 #' @noRd
 #' 
 #' 
@@ -105,7 +106,6 @@ app_server <- function( input, output, session ) {
       WFshapelist$wfs <- WFshapes()$NAME
     }else if(length(WFshapelist$wfs) > 0){
       for(j in WFshapelist$wfs){
-        print(j)
         if(j %!in% WFshapes()$NAME){
           removeTab("windfarm_Tabs",j)
         }
@@ -347,7 +347,6 @@ app_server <- function( input, output, session ) {
     
     withProgress(message = "Generating population estimates",value=0,{
       for(k in 1:nrow(Population_estimates)){
-        print(k)
         incProgress(1/nrow(Population_estimates),detail=paste("running", Population_estimates$Species[k], "in", Population_estimates$`Wind farm`[k] ))
         Specnm <- stringr::str_replace_all(defaultSpeciesValues$Scientific_name[defaultSpeciesValues$Common_name == Population_estimates$Species[k]]," ","_")
         btonm <- stringr::str_replace_all(defaultSpeciesValues$Sp_code[defaultSpeciesValues$Common_name == Population_estimates$Species[k]]," ","_")
@@ -360,10 +359,9 @@ app_server <- function( input, output, session ) {
         
         withProgress(message = "bootstrapping", value=0, {
           for(j in 1:boot.iters){
-            print(j)
             incProgress(1/boot.iters)
             PopVal <- popSizemn
-            Estimates[j] <- ceiling(length(stochLAB::GetSampleProp(speclines,samplesize,WFshapes[Population_estimates$`Wind farm`[k],]))/samplesize * PopVal)
+            Estimates[j] <- ceiling(length(GetSampleProp(speclines,samplesize,WFshapes[Population_estimates$`Wind farm`[k],]))/samplesize * PopVal)
             
           }
         })
@@ -419,7 +417,7 @@ app_server <- function( input, output, session ) {
                    "Proportion in UK", "Total population in UK", 
                    "PrBMigration","PoBMigration",
                    "OMigration")
-    
+    Df[is.na(Df)] <- "NA"
     return(Df)
   })
   
@@ -484,52 +482,55 @@ app_server <- function( input, output, session ) {
     names(TurbineDat) <- str_replace_all(names(TurbineDat)," ","")
     names(CountDat) <- str_replace_all(names(CountDat)," ","")
     
-    
-    
     outputs <- matrix(nrow=nrow(CountDat),ncol=5)
     
-    for(i in 1:nrow(CountDat)){
+    withProgress(message = "Running mCRM",value=0,{
+      for(i in 1:nrow(CountDat)){
+        incProgress(1/nrow(CountDat),detail=paste0("Running scenario ", i,"/",nrow(CountDat) ))
+        spp_name <- as.character(CountDat$Species[i])
+        wf_name <- as.character(CountDat$Windfarm[i])
+        BirdData <- BirdDat %>% dplyr::filter(Species == spp_name)
+        TurbineData <- TurbineDat %>% dplyr::filter(Windfarm == wf_name)
+        CountData <- CountDat[i,]
+        outs <- mig_stoch_crm(BirdData,TurbineData,CountData,iter=1000,spp_name,LargeArrayCorrection = T)
+        ## Send outputs to matrix
+        outputs[i,1] <- spp_name
+        outputs[i,2] <- wf_name
+        outputs[i,3] <- paste(round(mean(outs[,1],na.rm=T),3), "\u00B1", round(sd(outs[,1],na.rm=T),3))
+        outputs[i,4] <- paste(round(mean(outs[,2],na.rm=T),3), "\u00B1", round(sd(outs[,2],na.rm=T),3))
+        outputs[i,5] <- paste(round(mean(outs[,3],na.rm=T),3), "\u00B1", round(sd(outs[,3],na.rm=T),3))
+        
+      }
       
-      spp_name <- CountDat$Species[i]
-      wf_name <- CountDat$Windfarm[i]
-      
-      BirdData <- BirdDat %>% dplyr::filter(Species == spp_name)
-      TurbineData <- TurbineDat %>% dplyr::filter(Windfarm == wf_name)
-      CountData <- CountDat[i,]
-      
-      outs <- mig_stoch_crm(BirdData,TurbineData,CountData,iter=1000,spp_name,LargeArrayCorrection = T)
-      
-      
-      ## Send outputs to matrix
-      outputs[i,1] <- spp_name
-      outputs[i,2] <- wf_name
-      outputs[i,3] <- paste(round(mean(outs[,1],na.rm=T),3), "\u00B1", round(sd(outs[,1],na.rm=T),3))
-      outputs[i,4] <- paste(round(mean(outs[,2],na.rm=T),3), "\u00B1", round(sd(outs[,2],na.rm=T),3))
-      outputs[i,5] <- paste(round(mean(outs[,3],na.rm=T),3), "\u00B1", round(sd(outs[,3],na.rm=T),3))
-      
-    }
+    })
+    
+    
     outputs <- data.frame(outputs)
-    names(outputs) <- c('species',"windfarm","PrBMigration","PoBMigration","Omigration")
-    
-    
+    names(outputs) <- c('species',"windfarm","PrBMigration","PoBMigration","OMigration")
     
     PreBreedout <- reshape2::dcast(outputs[,c(1:3)],formula = species ~windfarm)
     PostBreedout <- reshape2::dcast(outputs[,c(1,2,4)],formula = species ~windfarm)
     Otherout <- reshape2::dcast(outputs[,c(1,2,5)],formula = species ~windfarm)
     
+    output$summTable_DT_PrB<- DT::renderDataTable({
+      PreBreedout
+    })
+    output$summTable_DT_PoB<- DT::renderDataTable({
+      PostBreedout
+    })
+    output$summTable_DT_O<- DT::renderDataTable({
+      Otherout
+    })
     
     
-    
-    
-    
-    
-    
-    
-    
-    output$simResults_UI <- renderUI({
-      
-      
-      
+    output$Simulation_Download <- renderUI({
+      tagList(
+        column(12, align = "right", 
+               shinyBS::tipify(downloadButton("dwnld_ModelOuts", "Download Outputs"), 
+                      title = "Download zip file with plots and tables presented below", 
+                      placement = "left", trigger = "hover", options = list(container = "body"))),
+        
+      )
     })
     
     
@@ -770,157 +771,157 @@ app_server <- function( input, output, session ) {
   #  ---- Prepare & check input data for simulation, triggered when user pushes go        ----
   #' --------------------------------------------------------------------------------------------------
   
-  observeEvent(input$actButtonInput_simulPars_GO, {
-    
-    missingValues <- list()
-    
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # ---  Check if at least one species selected
-    
-    # Launch error message and block simulation if species field is empty; else, carry on
-    if(is.null(slctSpeciesTags())){
-      
-      rv$speciesFieldFilled <- FALSE
-      
-      # Modal describing error to the user
-      sendSweetAlert(
-        session = session,
-        title = "No species selected",
-        text = span(
-          style = "font-size: 15px; text-align: left",
-          hr(),
-          br(),
-          tags$b("Please select at least one species in 'Step 2: Specie(s)'", style = "font-size: 15px; text-align: center")
-        ),
-        type = "error",
-        html = TRUE
-      )
-      
-      req(rv$speciesFieldFilled)
-      
-    }else{
-      
-      rv$speciesFieldFilled <- TRUE
-    }
-    
-    
-    
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # -------  bird biometric data
-    
-    # -- gather data
-    birdBiomData <- rv$biomParsInputs_ls %>%
-      ldply(function(x){data.frame(Value = as.character(x))}, .id = "inputTags") %>%
-      dplyr::mutate(inputTags_split = stringr::str_split(inputTags, "_")) %>%
-      dplyr::mutate(specLabel = map_chr(inputTags_split, function(x) paste(x[-c(1:4)], collapse = "_")),
-             par = map_chr(inputTags_split, function(x) x[3]),
-             hyper = map_chr(inputTags_split, function(x) x[4]),
-             par_hyper = paste(par, hyper, sep = "_")) %>%
-      dplyr::select(-c(inputTags, inputTags_split, par, hyper)) %>%
-      dplyr::semi_join(., slctSpeciesTags(), by = "specLabel")  # filter for currently selected species
-    
-    
-    # -- Check for NAs and save affected parameters
-    missingValues[["birdBiom"]] <- birdBiomData %>%
-      dplyr::filter(is.na(Value)) %>%
-      arrange(specLabel) %>%
-      dplyr::select(-Value) %>%
-      mutate(specName = str_replace_all(specLabel, "_", " "))
-    
-    
-    # Data manipulation for model
-    rv$birdata_model <- birdBiomData %>%
-      spread(par_hyper, Value) %>%
-      dplyr::rename(Species = specLabel, AvoidanceBasic = basicAvoid_E, AvoidanceBasicSD = basicAvoid_SD,
-             AvoidanceExtended = extAvoid_E, AvoidanceExtendedSD = extAvoid_SD, Body_Length = bodyLt_E, Body_LengthSD = bodyLt_SD,
-             Wingspan = wngSpan_E, WingspanSD = wngSpan_SD, Flight_Speed = flSpeed_E, Flight_SpeedSD = flSpeed_SD,
-             Nocturnal_Activity = noctAct_E, Nocturnal_ActivitySD = noctAct_SD, Flight = flType_tp,
-             Prop_CRH_Obs = CRHeight_E, Prop_CRH_ObsSD = CRHeight_SD) %>%
-      dplyr::select(Species, AvoidanceBasic, AvoidanceBasicSD, AvoidanceExtended, AvoidanceExtendedSD, Body_Length, Body_LengthSD,
-             Wingspan, WingspanSD, Flight_Speed, Flight_SpeedSD, Nocturnal_Activity, Nocturnal_ActivitySD, Flight,
-             Prop_CRH_Obs, Prop_CRH_ObsSD)
-    
-    
-    
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # -- birds FHD
-    #
-    # FHD data source chosen for each species
-    RVs_inputs_ls <- reactiveValuesToList(input)
-    FHD_UserOptions_ls <- RVs_inputs_ls[grep("userOpts_FHD_dtSrc", names(RVs_inputs_ls))]
-    
-    # Check for missing FHD data for each selected species
-    FHD_dataStatus <- FHD_UserOptions_ls %>%
-      map2_dfr(., names(.), function(x, y){
-        
-        specLabel <- map_chr(stringr::str_split(y, "_"), ~ paste(.[-c(1:4)], collapse = "_"))
-        
-        if(x == "default"){
-          tibble(specLabel = specLabel) %>%
-            mutate(missingFHD = ifelse(file.exists(paste0("data/", specLabel, "_ht_dflt.csv")), FALSE, TRUE))
-          
-        }else{
-          if(x == "other"){
-            cUserFHD_LsIndice <- str_which(safe_names(flgtHghDstInputs_ls()), specLabel)
-            tibble(specLabel = specLabel) %>%
-              mutate(missingFHD = ifelse(length(cUserFHD_LsIndice) > 0, FALSE, TRUE))
-          }
-        }
-      })%>%
-      semi_join(., slctSpeciesTags(), by = "specLabel")  # filter for currently selected species
-    
-  
-    
-    # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # # --------- turbine data 
-  
-    if(nrow(missingValues) > 0){
-      
-      # flag presence of NAs in data
-      rv$NAsFreeData <- FALSE
-      
-      # Modal describing error to the user
-      sendSweetAlert(
-        session = session,
-        title = "Found missing values in inputs",
-        text = span(
-          style = "font-size: 15px; text-align: left",
-          hr(),
-          p("NAs assigned to inputs in the following sections"),
-          tags$ul(
-            missingValues %>%
-              split(.$dataMainType) %>%
-              map(function(x){
-                if(unique(x$dataMainType) == "speciesFeatures"){
-                  tags$li(tags$u("Species features"),
-                          tags$ul(
-                            map(unique(x$specName), tags$li)
-                          ), br())
-                }else{
-                  if(unique(x$dataMainType) == "turbineFeatures"){
-                    tags$li(tags$u("Turbine and/or wind farm features"))
-                  }
-                }
-              })
-          ),
-          br(),
-          tags$b("Please fill in empty fields (highlighted in red) before proceeding to simulation", style = "font-size: 15px; text-align: center")
-        ),
-        type = "error",
-        html = TRUE
-      )
-      
-      #browser()
-      
-    }else{
-      # flag data is free off NAs
-      rv$NAsFreeData <- TRUE
-    }
-    
-    # Flick the trigger 
-    rv$simCodeTrigger <- rv$simCodeTrigger + 1
-  })
-  
+  # observeEvent(input$actButtonInput_simulPars_GO, {
+  #   
+  #   missingValues <- list()
+  #   
+  #   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #   # ---  Check if at least one species selected
+  #   
+  #   # Launch error message and block simulation if species field is empty; else, carry on
+  #   if(is.null(slctSpeciesTags())){
+  #     
+  #     rv$speciesFieldFilled <- FALSE
+  #     
+  #     # Modal describing error to the user
+  #     sendSweetAlert(
+  #       session = session,
+  #       title = "No species selected",
+  #       text = span(
+  #         style = "font-size: 15px; text-align: left",
+  #         hr(),
+  #         br(),
+  #         tags$b("Please select at least one species in 'Step 2: Specie(s)'", style = "font-size: 15px; text-align: center")
+  #       ),
+  #       type = "error",
+  #       html = TRUE
+  #     )
+  #     
+  #     req(rv$speciesFieldFilled)
+  #     
+  #   }else{
+  #     
+  #     rv$speciesFieldFilled <- TRUE
+  #   }
+  #   
+  #   
+  #   
+  #   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #   # -------  bird biometric data
+  #   
+  #   # -- gather data
+  #   birdBiomData <- rv$biomParsInputs_ls %>%
+  #     ldply(function(x){data.frame(Value = as.character(x))}, .id = "inputTags") %>%
+  #     dplyr::mutate(inputTags_split = stringr::str_split(inputTags, "_")) %>%
+  #     dplyr::mutate(specLabel = map_chr(inputTags_split, function(x) paste(x[-c(1:4)], collapse = "_")),
+  #            par = map_chr(inputTags_split, function(x) x[3]),
+  #            hyper = map_chr(inputTags_split, function(x) x[4]),
+  #            par_hyper = paste(par, hyper, sep = "_")) %>%
+  #     dplyr::select(-c(inputTags, inputTags_split, par, hyper)) %>%
+  #     dplyr::semi_join(., slctSpeciesTags(), by = "specLabel")  # filter for currently selected species
+  #   
+  #   
+  #   # -- Check for NAs and save affected parameters
+  #   missingValues[["birdBiom"]] <- birdBiomData %>%
+  #     dplyr::filter(is.na(Value)) %>%
+  #     arrange(specLabel) %>%
+  #     dplyr::select(-Value) %>%
+  #     mutate(specName = str_replace_all(specLabel, "_", " "))
+  #   
+  #   
+  #   # Data manipulation for model
+  #   rv$birdata_model <- birdBiomData %>%
+  #     spread(par_hyper, Value) %>%
+  #     dplyr::rename(Species = specLabel, AvoidanceBasic = basicAvoid_E, AvoidanceBasicSD = basicAvoid_SD,
+  #            AvoidanceExtended = extAvoid_E, AvoidanceExtendedSD = extAvoid_SD, Body_Length = bodyLt_E, Body_LengthSD = bodyLt_SD,
+  #            Wingspan = wngSpan_E, WingspanSD = wngSpan_SD, Flight_Speed = flSpeed_E, Flight_SpeedSD = flSpeed_SD,
+  #            Nocturnal_Activity = noctAct_E, Nocturnal_ActivitySD = noctAct_SD, Flight = flType_tp,
+  #            Prop_CRH_Obs = CRHeight_E, Prop_CRH_ObsSD = CRHeight_SD) %>%
+  #     dplyr::select(Species, AvoidanceBasic, AvoidanceBasicSD, AvoidanceExtended, AvoidanceExtendedSD, Body_Length, Body_LengthSD,
+  #            Wingspan, WingspanSD, Flight_Speed, Flight_SpeedSD, Nocturnal_Activity, Nocturnal_ActivitySD, Flight,
+  #            Prop_CRH_Obs, Prop_CRH_ObsSD)
+  #   
+  #   
+  #   
+  #   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #   # -- birds FHD
+  #   #
+  #   # FHD data source chosen for each species
+  #   RVs_inputs_ls <- reactiveValuesToList(input)
+  #   FHD_UserOptions_ls <- RVs_inputs_ls[grep("userOpts_FHD_dtSrc", names(RVs_inputs_ls))]
+  #   
+  #   # Check for missing FHD data for each selected species
+  #   FHD_dataStatus <- FHD_UserOptions_ls %>%
+  #     map2_dfr(., names(.), function(x, y){
+  #       
+  #       specLabel <- map_chr(stringr::str_split(y, "_"), ~ paste(.[-c(1:4)], collapse = "_"))
+  #       
+  #       if(x == "default"){
+  #         tibble(specLabel = specLabel) %>%
+  #           mutate(missingFHD = ifelse(file.exists(paste0("data/", specLabel, "_ht_dflt.csv")), FALSE, TRUE))
+  #         
+  #       }else{
+  #         if(x == "other"){
+  #           cUserFHD_LsIndice <- str_which(safe_names(flgtHghDstInputs_ls()), specLabel)
+  #           tibble(specLabel = specLabel) %>%
+  #             mutate(missingFHD = ifelse(length(cUserFHD_LsIndice) > 0, FALSE, TRUE))
+  #         }
+  #       }
+  #     })%>%
+  #     semi_join(., slctSpeciesTags(), by = "specLabel")  # filter for currently selected species
+  #   
+  # 
+  #   
+  #   # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #   # # --------- turbine data 
+  # 
+  #   if(nrow(missingValues) > 0){
+  #     
+  #     # flag presence of NAs in data
+  #     rv$NAsFreeData <- FALSE
+  #     
+  #     # Modal describing error to the user
+  #     sendSweetAlert(
+  #       session = session,
+  #       title = "Found missing values in inputs",
+  #       text = span(
+  #         style = "font-size: 15px; text-align: left",
+  #         hr(),
+  #         p("NAs assigned to inputs in the following sections"),
+  #         tags$ul(
+  #           missingValues %>%
+  #             split(.$dataMainType) %>%
+  #             map(function(x){
+  #               if(unique(x$dataMainType) == "speciesFeatures"){
+  #                 tags$li(tags$u("Species features"),
+  #                         tags$ul(
+  #                           map(unique(x$specName), tags$li)
+  #                         ), br())
+  #               }else{
+  #                 if(unique(x$dataMainType) == "turbineFeatures"){
+  #                   tags$li(tags$u("Turbine and/or wind farm features"))
+  #                 }
+  #               }
+  #             })
+  #         ),
+  #         br(),
+  #         tags$b("Please fill in empty fields (highlighted in red) before proceeding to simulation", style = "font-size: 15px; text-align: center")
+  #       ),
+  #       type = "error",
+  #       html = TRUE
+  #     )
+  #     
+  #     #browser()
+  #     
+  #   }else{
+  #     # flag data is free off NAs
+  #     rv$NAsFreeData <- TRUE
+  #   }
+  #   
+  #   # Flick the trigger 
+  #   rv$simCodeTrigger <- rv$simCodeTrigger + 1
+  # })
+  # 
   
  
   #' -----------------------------------------------------------------------
