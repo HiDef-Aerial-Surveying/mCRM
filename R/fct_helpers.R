@@ -39,9 +39,29 @@ NormNumericInput <- function(paramID,  varName, infoId="foo", infoText ="", #spe
 }
 
 
-
-
 # Functions for Plotting --------------------------------------------------
+
+# Get wind farm width function ---------------------------------------------
+#' Get windfarm width
+#'
+#' Returns the width of the windfarm in kilometers for use in the flux calculations.
+#'
+#' @param polyg A polygon. A polygon in WGS84 for calculating the distances between vertices.
+#'
+#' @return
+#' The maximum distance between polygon vertices
+#' 
+#' @importFrom geosphere distm
+#' @importFrom geosphere distGeo
+
+get_wf_width <- function(polyg){
+  #Get the vertices of the polygon and apply the distGeo funcion
+  vertices <- polyg@polygons[[1]]@Polygons[[1]]@coords
+  dists <- geosphere::distm(vertices, fun = geosphere::distGeo)
+  #Get the maximum distance between vertices, which represents the width of the windfarm
+  maxDist <- round(dists[which(dists==max(dists))][1]/1000,3)
+  return(maxDist)
+}
 
 
 

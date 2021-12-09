@@ -303,7 +303,7 @@ app_server <- function( input, output, session ) {
     )
     
     
-    
+    #browser()
     wind_scenario_table <- tibble(WindFarm = WFNames)
     
     wind_scenario_table <- foreach(i=1:nrow(wind_scenario_table),.combine='rbind') %do% {

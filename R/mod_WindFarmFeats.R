@@ -28,7 +28,7 @@ mod_WindFarmFeats_ui <- function(id){
         #            selectize = TRUE
         #),
         
-        # --- Turbine Power
+        # --- Number of Turbines
         numericInput(width = "85%", 
                      inputId = ns("numInput_windfarmPars_nTurbines"), 
                      label = label.help("Number of Turbines", ns("lbl_windfarmnTurbines")),
@@ -198,6 +198,10 @@ mod_WindFarmFeats_server <- function(id, data){
       observe({
         ## Get the number of turbines and put into the tool
         updateNumericInput(inputId = "numInput_windfarmPars_nTurbines",value=Scotwind_Merged$N_TURBINES[Scotwind_Merged$NAME == nid])
+      })
+      
+      observe({
+        updateNumericInput(inputId = "numInput_windfarmPars_width",value=get_wf_width(Scotwind_Merged[Scotwind_Merged$NAME == nid,]))
       })
       
       
