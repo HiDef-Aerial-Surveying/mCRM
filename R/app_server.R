@@ -482,7 +482,7 @@ app_server <- function( input, output, session ) {
     names(TurbineDat) <- str_replace_all(names(TurbineDat)," ","")
     names(CountDat) <- str_replace_all(names(CountDat)," ","")
     
-    outputs <- matrix(nrow=nrow(CountDat),ncol=5)
+    outputs <- matrix(nrow=nrow(CountDat),ncol=11)
     
     withProgress(message = "Running mCRM",value=0,{
       for(i in 1:nrow(CountDat)){
@@ -499,27 +499,52 @@ app_server <- function( input, output, session ) {
         outputs[i,3] <- paste(round(mean(outs[,1],na.rm=T),3), "\u00B1", round(sd(outs[,1],na.rm=T),3))
         outputs[i,4] <- paste(round(mean(outs[,2],na.rm=T),3), "\u00B1", round(sd(outs[,2],na.rm=T),3))
         outputs[i,5] <- paste(round(mean(outs[,3],na.rm=T),3), "\u00B1", round(sd(outs[,3],na.rm=T),3))
-        
+        ## Set raw values to matrix as well so they can be used for cumulative assessments
+        outputs[i,6] <- round(mean(outs[,1],na.rm=T),3)
+        outputs[i,7] <- round(sd(outs[,1],na.rm=T),3)  
+        outputs[i,8] <- round(mean(outs[,2],na.rm=T),3) 
+        outputs[i,9] <- round(sd(outs[,2],na.rm=T),3) 
+        outputs[i,10] <- round(mean(outs[,3],na.rm=T),3)
+        outputs[i,11] <- round(sd(outs[,3],na.rm=T),3)
       }
       
     })
     
     
     outputs <- data.frame(outputs)
-    names(outputs) <- c('species',"windfarm","PrBMigration","PoBMigration","OMigration")
+    names(outputs)[1:5] <- c('species',"windfarm","PrBMigration","PoBMigration","OMigration")
     
     PreBreedout <- reshape2::dcast(outputs[,c(1:3)],formula = species ~windfarm)
     PostBreedout <- reshape2::dcast(outputs[,c(1,2,4)],formula = species ~windfarm)
     Otherout <- reshape2::dcast(outputs[,c(1,2,5)],formula = species ~windfarm)
     
+    ## Create summary table
+    cumulTab <- outputs %>%
+      group_by(species) %>%
+      dplyr::summarise(PrBsum = sum(as.numeric(X6),na.rm=TRUE),
+                                           PrBsd = sum.stdevs(as.numeric(X7)),
+                                           PoBsum = sum(as.numeric(X8),na.rm=TRUE),
+                                           PoBsd = sum.stdevs(as.numeric(X9)),
+                                           Osum = sum(as.numeric(X10),na.rm=TRUE),
+                                           Osd = sum.stdevs(as.numeric(X11))) %>%
+      dplyr::rename("Species" = species) %>%
+      dplyr::mutate('Pre-breeding total' = paste(PrBsum, "\u00B1", round(PrBsd,3)),
+                    'Post-breeding total' = paste(PoBsum, "\u00B1", round(PoBsd,3)),
+                    'Other total' = paste(Osum, "\u00B1", round(Osd,3))) %>%
+      dplyr::select(-PrBsum,-PrBsd,-PoBsum,-PoBsd,-Osum,-Osd)
+    
+    
     output$summTable_DT_PrB<- DT::renderDataTable({
-      PreBreedout
+      datatable(PreBreedout,rownames=FALSE)
     })
     output$summTable_DT_PoB<- DT::renderDataTable({
       PostBreedout
     })
     output$summTable_DT_O<- DT::renderDataTable({
       Otherout
+    })
+    output$cumulTable_DT<- DT::renderDataTable({
+      data.frame(cumulTab)
     })
     
     

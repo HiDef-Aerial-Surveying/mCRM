@@ -276,6 +276,11 @@ betaInputPars_qtlTbl <- function(p, stdev, varTag, decPlaces = 3){
   }
 }
 
+#' Sum the standard deviations
+#' @export
+sum.stdevs <- function(x){
+  return(sqrt(sum(sapply(x,function(x) x^2),na.rm=T)))
+}
 
 
 # Functions for Alerts on Parameter Validation  ---------------------------

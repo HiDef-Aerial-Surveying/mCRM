@@ -347,6 +347,9 @@ app_ui <- function(request) {
                          ),
                          box(title = "Other migration Outputs", width = 12, status = "primary", solidHeader = TRUE,
                              DT::dataTableOutput("summTable_DT_O")
+                         ),
+                         box(title = "Culmulative Outputs", width = 12, status = "primary", solidHeader = TRUE,
+                             DT::dataTableOutput("cumulTable_DT")
                          )
                          )
 
