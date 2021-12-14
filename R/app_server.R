@@ -512,22 +512,22 @@ app_server <- function( input, output, session ) {
     
     
     outputs <- data.frame(outputs)
-    names(outputs)[1:5] <- c('species',"windfarm","PrBMigration","PoBMigration","OMigration")
+    names(outputs)[1:5] <- c('Species',"windfarm","PrBMigration","PoBMigration","OMigration")
     
-    PreBreedout <- reshape2::dcast(outputs[,c(1:3)],formula = species ~windfarm)
-    PostBreedout <- reshape2::dcast(outputs[,c(1,2,4)],formula = species ~windfarm)
-    Otherout <- reshape2::dcast(outputs[,c(1,2,5)],formula = species ~windfarm)
+    PreBreedout <- reshape2::dcast(outputs[,c(1:3)],formula = Species ~windfarm)
+    PostBreedout <- reshape2::dcast(outputs[,c(1,2,4)],formula = Species ~windfarm)
+    Otherout <- reshape2::dcast(outputs[,c(1,2,5)],formula = Species ~windfarm)
+    
     
     ## Create summary table
     cumulTab <- outputs %>%
-      group_by(species) %>%
+      group_by(Species) %>%
       dplyr::summarise(PrBsum = sum(as.numeric(X6),na.rm=TRUE),
                                            PrBsd = sum.stdevs(as.numeric(X7)),
                                            PoBsum = sum(as.numeric(X8),na.rm=TRUE),
                                            PoBsd = sum.stdevs(as.numeric(X9)),
                                            Osum = sum(as.numeric(X10),na.rm=TRUE),
                                            Osd = sum.stdevs(as.numeric(X11))) %>%
-      dplyr::rename("Species" = species) %>%
       dplyr::mutate('Pre-breeding total' = paste(PrBsum, "\u00B1", round(PrBsd,3)),
                     'Post-breeding total' = paste(PoBsum, "\u00B1", round(PoBsd,3)),
                     'Other total' = paste(Osum, "\u00B1", round(Osd,3))) %>%
@@ -538,13 +538,13 @@ app_server <- function( input, output, session ) {
       datatable(PreBreedout,rownames=FALSE)
     })
     output$summTable_DT_PoB<- DT::renderDataTable({
-      PostBreedout
+      datatable(PostBreedout,rownames=FALSE)
     })
     output$summTable_DT_O<- DT::renderDataTable({
-      Otherout
+      datatable(Otherout,rownames=FALSE)
     })
     output$cumulTable_DT<- DT::renderDataTable({
-      data.frame(cumulTab)
+      datatable(data.frame(cumulTab),rownames=FALSE)
     })
     
     
