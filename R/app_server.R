@@ -192,18 +192,18 @@ app_server <- function( input, output, session ) {
              id_name <- defaultSpeciesValues$Scientific_name[which(defaultSpeciesValues$Common_name == x)]
              id_name <- stringr::str_replace_all(id_name," ","_")
              
-
+             
              data.frame(
                #species = id_name,
                flying = eval(parse(text=paste0("input$`",id_name,"-slctInput_biomPars_flType_tp`"))),
-               bdlenE = eval(parse(text=paste0("input$`numInput_",id_name,"-biomPars_bodyLt_E_`"))),
-               bdlenSD = eval(parse(text=paste0("input$`numInput_",id_name,"-biomPars_bodyLt_SD_`"))),
-               wnspnE = eval(parse(text=paste0("input$`numInput_",id_name,"-biomPars_wngSpan_E_`"))),
-               wnspnSD = eval(parse(text=paste0("input$`numInput_",id_name,"-biomPars_wngSpan_SD_`"))),
-               flSpdE = eval(parse(text=paste0("input$`numInput_",id_name,"-biomPars_flSpeed_E_`"))),
-               flSpdSD = eval(parse(text=paste0("input$`numInput_",id_name,"-biomPars_flSpeed_SD_`"))),
-               AvoidE = eval(parse(text=paste0("input$`numInput_",id_name,"-biomPars_basicAvoid_E_`"))),
-               AvoidSD = eval(parse(text=paste0("input$`numInput_",id_name,"-biomPars_basicAvoid_SD_`"))),
+               bdlenE = eval(parse(text=paste0("input$`",id_name,"-biomPars_bodyLt_E_numInput`"))),
+               bdlenSD = eval(parse(text=paste0("input$`",id_name,"-biomPars_bodyLt_SD_numInput`"))),
+               wnspnE = eval(parse(text=paste0("input$`",id_name,"-biomPars_wngSpan_E_numInput`"))),
+               wnspnSD = eval(parse(text=paste0("input$`",id_name,"-biomPars_wngSpan_SD_numInput`"))),
+               flSpdE = eval(parse(text=paste0("input$`",id_name,"-biomPars_flSpeed_E_numInput`"))),
+               flSpdSD = eval(parse(text=paste0("input$`",id_name,"-biomPars_flSpeed_SD_numInput`"))),
+               AvoidE = eval(parse(text=paste0("input$`",id_name,"-biomPars_basicAvoid_E_numInput`"))),
+               AvoidSD = eval(parse(text=paste0("input$`",id_name,"-biomPars_basicAvoid_SD_numInput`"))),
                PCH = eval(parse(text=paste0("input$`",id_name,"-biomPars_CRHeight`"))),
                BioGpop = eval(parse(text=paste0("input$`",id_name,"-biomPars_biogeographic_pop`"))),
                BioGprop = eval(parse(text=paste0("input$`",id_name,"-biomPars_prop_uk`"))),
@@ -232,10 +232,10 @@ app_server <- function( input, output, session ) {
                nBlades = eval(parse(text=paste0("input$`",x,"-numInput_turbinePars_numBlades`"))),
                rRadius = eval(parse(text=paste0("input$`",x,"-numInput_turbinePars_rotRadius`"))),
                bWidth = eval(parse(text=paste0("input$`",x,"-numInput_turbinePars_maxBladeWdth`"))),
-               RotnSpdE <- eval(parse(text=paste0("input$`numInput_",x,"-turbinePars_rotnSpeed_E_`"))),
-               RotnSpdSD <- eval(parse(text=paste0("input$`numInput_",x,"-turbinePars_rotnSpeed_SD_`"))),
-               BldPitchE <- eval(parse(text=paste0("input$`numInput_",x,"-turbinePars_bladePitch_E_`"))),
-               BldPitchSD <- eval(parse(text=paste0("input$`numInput_",x,"-turbinePars_bladePitch_SD_`")))
+               RotnSpdE <- eval(parse(text=paste0("input$`",x,"-turbinePars_rotnSpeed_E_numInput`"))),
+               RotnSpdSD <- eval(parse(text=paste0("input$`",x,"-turbinePars_rotnSpeed_SD_numInput`"))),
+               BldPitchE <- eval(parse(text=paste0("input$`",x,"-turbinePars_bladePitch_E_numInput`"))),
+               BldPitchSD <- eval(parse(text=paste0("input$`",x,"-turbinePars_bladePitch_SD_numInput`")))
              )
              
              winddatatable <- eval(parse(text=paste0(
@@ -257,6 +257,7 @@ app_server <- function( input, output, session ) {
 
   
   observeEvent(input$button_generate_scenarios  ,{
+    
     
     BirdNames <- BirdNames()
     WFNames <- WFshapes()$NAME
@@ -518,7 +519,6 @@ app_server <- function( input, output, session ) {
     PostBreedout <- reshape2::dcast(outputs[,c(1,2,4)],formula = Species ~windfarm)
     Otherout <- reshape2::dcast(outputs[,c(1,2,5)],formula = Species ~windfarm)
     
-    
     ## Create summary table
     cumulTab <- outputs %>%
       group_by(Species) %>%
@@ -528,9 +528,13 @@ app_server <- function( input, output, session ) {
                                            PoBsd = sum.stdevs(as.numeric(X9)),
                                            Osum = sum(as.numeric(X10),na.rm=TRUE),
                                            Osd = sum.stdevs(as.numeric(X11))) %>%
-      dplyr::mutate('Pre-breeding total' = paste(PrBsum, "\u00B1", round(PrBsd,3)),
+      dplyr::rowwise() %>%
+      dplyr::mutate(
+                    'Pre-breeding total' = paste(PrBsum, "\u00B1", round(PrBsd,3)),
                     'Post-breeding total' = paste(PoBsum, "\u00B1", round(PoBsd,3)),
-                    'Other total' = paste(Osum, "\u00B1", round(Osd,3))) %>%
+                    'Other total' = paste(Osum, "\u00B1", round(Osd,3)),
+                    'Total' = paste(sum(dplyr::c_across(c(PrBsum,PoBsum,Osum))),"\u00B1",round(sum.stdevs(dplyr::c_across(c(PrBsd,PoBsd,Osd))),3))
+                    ) %>%
       dplyr::select(-PrBsum,-PrBsd,-PoBsum,-PoBsd,-Osum,-Osd)
     
     
@@ -544,7 +548,7 @@ app_server <- function( input, output, session ) {
       datatable(Otherout,rownames=FALSE)
     })
     output$cumulTable_DT<- DT::renderDataTable({
-      datatable(data.frame(cumulTab),rownames=FALSE)
+      datatable(cumulTab,rownames=FALSE)
     })
     
     

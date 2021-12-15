@@ -40,7 +40,9 @@ Imports:
     shinycssloaders,
     foreach,
     stochLAB (>= 0.1.0),
-    geosphere
+    geosphere,
+    hrbrthemes,
+    sf
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.1.2

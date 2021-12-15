@@ -1,12 +1,12 @@
 name: mCRM
 title: mCRM
 username:
-account: hidefdevo
+account: blackbawks
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
-appId: 3814885
-bundleId: 5373468
-url: https://hidefdevo.shinyapps.io/mCRM/
-when: 1639525514.97187
+appId: 5328132
+bundleId: 5373528
+url: https://blackbawks.shinyapps.io/mCRM/
+when: 1639527026.31235
 asMultiple: FALSE
 asStatic: FALSE

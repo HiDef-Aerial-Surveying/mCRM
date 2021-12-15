@@ -45,34 +45,27 @@ mod_bird_features_ui <- function(id){
                             will be calculated in the next step when you generate your scenarios. You will have the option
                             of inputting these values manually as well"),
                           br()
-                          ),
+                   ),
                    column(4,
                           switchButton(inputId = ns("switch_pre_breeding_migration"),
                                        label = "Pre-breeding migration", 
-                                       value = TRUE, col = "GB", type = "OO")),
+                                       value = FALSE, col = "GB", type = "OO"),
+                          uiOutput(ns('pre_breed_dates'))
+                   ),
                    column(4,
                           switchButton(inputId = ns("switch_post_breeding_migration"),
                                        label = "Post-breeding migration", 
-                                       value = FALSE, col = "GB", type = "OO")),
+                                       value = FALSE, col = "GB", type = "OO"),
+                          uiOutput(ns('post_breed_dates'))),
                    column(4,
                           switchButton(inputId = ns("switch_other_migration"),
                                        label = "Other migration", 
-                                       value = FALSE, col = "GB", type = "OO"))
+                                       value = FALSE, col = "GB", type = "OO"),
+                          uiOutput(ns('other_dates')))
                  )
-
-                        # radioGroupButtons(inputId = ns("radGrpInput_Densities_userinput_or_lines"),
-                        #                   individual = TRUE,
-                        #                   justified = TRUE, 
-                        #                   label = NULL,
-                        #                   choices = c("Manual input" = "manualDensities",
-                        #                               "Simulate counts" = "simulateDensities"),
-                        #                   checkIcon = list(yes = tags$i(class = "fa fa-circle",
-                        #                                                 style = "color: steelblue"),
-                        #                                    no = tags$i(class = "fa fa-circle-o",
-                        #                                                style = "color: steelblue"))),
-                        
-                        #uiOutput(ns("spShape_builtin_or_userinput_radio")),
-                 ),
+                 
+                 
+             ),
              
              box(width=6,
                  title = "Migration corridor",
@@ -81,12 +74,11 @@ mod_bird_features_ui <- function(id){
                  collapsible = TRUE,
                  column(12,
                         leaflet::leafletOutput(ns("MigMap"),width="100%") %>% withSpinner(color="#6794d5")
-                        #h3("Migratory map will appear here")
                  )
              )
-             )
-             
-      ),
+      )
+      
+    ),
     
     fluidRow(
       column(width=12,
@@ -167,24 +159,16 @@ mod_bird_features_ui <- function(id){
                               label = "UK Population",
                               value = 1,
                               min=0,max=1,step=1,width="33%")
-                 #uiOutput(outputId = ns("UiOutput_uk_population"))
-                 # NormNumericInput(paramID = ns("biomPars_CRHeight"), #specID = id, #specLabel, 
-                 #                  varName = "Proportion at CRH",
-                 #                  #infoId = paste0("lbl_CRHeight_", specLabel),
-                 #                  via_InsertUI = TRUE,
-                 #                  E_value = ifelse(is.null(specStartVals$Prop_CRH), 1, specStartVals$CRHeight_E),
-                 #                  E_min=0, E_step = 0.01,
-                 #                  SD_value = 0,#ifelse(is.null(specStartVals$CRHeight_SD), 0, specStartVals$CRHeight_SD), 
-                 #                  SD_min = 0, SD_step = 0.001)
+                 
                  
              ),
              
              box(width = 6,
-                 title = "Plotting space",
+                 title = "Density plots",
                  status = "primary", 
                  solidHeader = TRUE,
                  collapsible = TRUE,
-                 h3("Press button to view plot of distribution")
+                 plotOutput(ns("Density_Plot_Space"))
              )
       )
       
@@ -195,70 +179,122 @@ mod_bird_features_ui <- function(id){
     
   )
 }
-    
+
 #' bird_features Server Function
 #'
 #' @noRd 
 mod_bird_features_server <- function(id,data){
-    moduleServer(
-      id,
-      function(input,output,session){
-        
-        ns <- session$ns
-        
-        # Migratory Map control ---------------------------------------------------
-        Popvals <- reactive({
-          data.frame(pop=input$biomPars_biogeographic_pop,prop_uk=input$biomPars_prop_uk)
-        })
-        
-        
-        observe({
-          Popvals <- Popvals()
-          updateNumericInput(inputId = "biomPars_uk_population",value= ceiling(Popvals$pop * Popvals$prop_uk))
-          shinyjs::disable("biomPars_uk_population")
-        })
-        
-
-        
-        SpPoly <- reactive({
-          
-          sppc <- defaultSpeciesValues$Sp_code[stringr::str_replace_all(defaultSpeciesValues$Scientific_name," ","_") == id]
-          SpPoly <- all_polygons[[sppc]]
-          SpPoly <- sf::st_transform(SpPoly,4326)
-          
-        })
-        
-        output$MigMap <- renderLeaflet({
-          cur.popup <- paste0("<strong>Name: </strong>", data@data$NAME)
-          leaflet::leaflet() %>%
-            leaflet::addProviderTiles(providers$Esri.OceanBasemap,
-                                      options = leaflet::providerTileOptions(noWrap = TRUE)) %>%
-            setView(-4, 55, zoom = 5) %>%
-            addPolygons(data=data,weight = 1, fillColor = "red", popup=cur.popup, fillOpacity = 1) %>%
-            addPolygons(data=SpPoly(),fillColor="green",fillOpacity=0.7)
-        })
-        
-        
-        
-        observeEvent(input$button_update_Windfarm_tabs, {
-          cur.popup <- paste0("<strong>Name: </strong>", data$NAME)
-          
-          leaflet::leafletProxy("MigMap",data=data) %>% clearShapes() %>%
-            addPolygons(weight = 1, fillColor = "red", popup=cur.popup, fillOpacity = 1) %>%
-            addPolygons(data=SpPoly(),fillColor="green",fillOpacity=0.7)
-        })
-
+  moduleServer(
+    id,
+    function(input,output,session){
+      
+      ns <- session$ns
+      
+      # Observers for the migration buttons to display the migratory periods
+      observeEvent(input$switch_pre_breeding_migration,{
+        output$pre_breed_dates <- renderUI({p("")})
+        if(input$switch_pre_breeding_migration == TRUE){
+          migp <- defaultSpeciesValues$Pre_breed_mig_months[stringr::str_replace_all(defaultSpeciesValues$Scientific_name," ","_") == id]
+          output$pre_breed_dates <- renderUI({
+            p(migp)
+          })
+        }else{
+          output$pre_breed_dates <- renderUI({p("")})
+        }
       })
-  
-  
-  
-  
-  
+      observeEvent(input$switch_post_breeding_migration,{
+        output$post_breed_dates <- renderUI({p("")})
+        migp <- defaultSpeciesValues$Post_breed_mig_months[stringr::str_replace_all(defaultSpeciesValues$Scientific_name," ","_") == id]
+        if(input$switch_post_breeding_migration == TRUE){
+          output$post_breed_dates <- renderUI({
+            p(migp)
+          })  
+        }else{
+          output$post_breed_dates <- renderUI({p("")})
+        }
+      })
+      observeEvent(input$switch_other_migration,{
+        output$other_dates <- renderUI({p("")})
+        migp <- defaultSpeciesValues$Other_mig_months[stringr::str_replace_all(defaultSpeciesValues$Scientific_name," ","_") == id]
+        if(input$switch_other_migration){
+          output$other_dates <- renderUI({
+            p(migp)
+          })  
+        }else{
+          output$other_dates <- renderUI({p("")})
+        }
+      })
+      
+      # Migratory Map control ---------------------------------------------------
+      Popvals <- reactive({
+        data.frame(pop=input$biomPars_biogeographic_pop,prop_uk=input$biomPars_prop_uk)
+      })
+      
+      # Control for the UK population calculation
+      observe({
+        Popvals <- Popvals()
+        updateNumericInput(inputId = "biomPars_uk_population",value= ceiling(Popvals$pop * Popvals$prop_uk))
+        shinyjs::disable("biomPars_uk_population")
+      })
+      
+      
+      # Gets the migratory pathway polygon for the species
+      SpPoly <- reactive({
+        sppc <- defaultSpeciesValues$Sp_code[stringr::str_replace_all(defaultSpeciesValues$Scientific_name," ","_") == id]
+        SpPoly <- all_polygons[[sppc]]
+        SpPoly <- sf::st_transform(SpPoly,4326)
+      })
+      
+      # Draws the migratory pathway
+      output$MigMap <- renderLeaflet({
+        cur.popup <- paste0("<strong>Name: </strong>", data@data$NAME)
+        leaflet::leaflet() %>%
+          leaflet::addProviderTiles(providers$Esri.OceanBasemap,
+                                    options = leaflet::providerTileOptions(noWrap = TRUE)) %>%
+          setView(-4, 55, zoom = 5) %>%
+          addPolygons(data=data,weight = 1, fillColor = "red", popup=cur.popup, fillOpacity = 1) %>%
+          addPolygons(data=SpPoly(),fillColor="green",fillOpacity=0.6)
+      })
+      
+      # Creates the popup for the windfarms so they are also plotted 
+      observeEvent(input$button_update_Windfarm_tabs, {
+        cur.popup <- paste0("<strong>Name: </strong>", data$NAME)
+        leaflet::leafletProxy("MigMap",data=data) %>% clearShapes() %>%
+          addPolygons(weight = 1, fillColor = "red", popup=cur.popup, fillOpacity = 1) %>%
+          addPolygons(data=SpPoly(),fillColor="green",fillOpacity=0.7)
+      })
+      
+
+      # Controls for plotting density histograms --------------------------------
+      
+      observeEvent(input$biomPars_bodyLt,{
+        mu <- input$biomPars_bodyLt_E_numInput
+        stdev <- input$biomPars_bodyLt_SD_numInput
+        output$Density_Plot_Space <- renderPlot({truncNormPars_densPlots(mu = mu,
+                                                                         stdev = stdev,
+                                                                         xlab="Body length (m)")})
+      })
+      observeEvent(input$biomPars_wngSpan,{
+        mu <- input$biomPars_wngSpan_E_numInput
+        stdev <- input$biomPars_wngSpan_SD_numInput
+        output$Density_Plot_Space <- renderPlot({truncNormPars_densPlots(mu = mu,
+                                                                         stdev = stdev,
+                                                                         xlab="Wing span (m)")})
+      })
+      observeEvent(input$biomPars_flSpeed,{
+        mu <- input$biomPars_flSpeed_E_numInput
+        stdev <- input$biomPars_flSpeed_SD_numInput
+        output$Density_Plot_Space <- renderPlot({truncNormPars_densPlots(mu = mu,
+                                                                         stdev = stdev,
+                                                                         xlab="Flight speed (m/s)")})
+      })
+      observeEvent(input$biomPars_basicAvoid,{
+        mu <- input$biomPars_basicAvoid_E_numInput
+        stdev <- input$biomPars_basicAvoid_SD_numInput
+        output$Density_Plot_Space <- renderPlot({truncNormPars_densPlots(mu = mu,
+                                                                         stdev = stdev,
+                                                                         xlab="Avoidance rate")})
+      })
+      
+    })
 }
-    
-## To be copied in the UI
-# mod_bird_features_ui("bird_features_ui_1")
-    
-## To be copied in the server
-# callModule(mod_bird_features_server, "bird_features_ui_1")
- 
