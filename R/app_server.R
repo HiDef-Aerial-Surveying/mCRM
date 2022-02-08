@@ -826,9 +826,7 @@ app_server <- function( input, output, session ) {
           outputs[i,10] <- round(mean(outs[,3],na.rm=T),3)
           outputs[i,11] <- round(sd(outs[,3],na.rm=T),3)
         }
-        
       })
-      
       
       outputs <- data.frame(outputs)
       names(outputs)[1:5] <- c('Species',"windfarm","PrBMigration","PoBMigration","OMigration")
@@ -851,7 +849,8 @@ app_server <- function( input, output, session ) {
           'Pre-breeding total' = paste(PrBsum, "\u00B1", round(PrBsd,3)),
           'Post-breeding total' = paste(PoBsum, "\u00B1", round(PoBsd,3)),
           'Other total' = paste(Osum, "\u00B1", round(Osd,3)),
-          'Total' = paste(sum(dplyr::c_across(c(PrBsum,PoBsum,Osum))),"\u00B1",round(sum.stdevs(dplyr::c_across(c(PrBsd,PoBsd,Osd))),3))
+          'Total' = paste(sum(dplyr::c_across(c(PrBsum,PoBsum,Osum))),"\u00B1",
+                          round(sum.stdevs(dplyr::c_across(c(PrBsd,PoBsd,Osd))),3))
         ) %>%
         dplyr::select(-PrBsum,-PrBsd,-PoBsum,-PoBsd,-Osum,-Osd)
       
@@ -887,6 +886,10 @@ app_server <- function( input, output, session ) {
       })
     }
 
+    
+    
+    
+    
   })  
   
   
@@ -959,20 +962,16 @@ app_server <- function( input, output, session ) {
     showModal(
       modalDialog(size = "l",
                   title = h3("Release Notes"),
-                  h4("v0.0.9 - July, 2021"),
-                  p("Added the bird features module"),
+                  h4("v0.2.0 - February, 2022"),
+                  p("Updated stochLAB package"),
                   tags$ul(
                     tags$li(tags$b("Additions & Updates"), 
                             tags$ul(
-                              tags$li("Changed over to a tab-based structure for the species features"),
-                              tags$li("Generated the module for creating species feature tabs"),
-                              tags$li("Changed colour scheme to teal - blue")
+                              tags$li("Updated to latest version of stochLAB"),
                             )),
                     tags$li(tags$b("To-Do List"),
                             tags$ul(
-                              tags$li("Allow users to upload shapefile"),
-                              tags$li("Migratory bird maps to be generated and added"),
-                              tags$li("Species list to be finalized and added")
+                              tags$li("Allow users to upload shapefiles"),
                             ))
                   ),
                   easyClose = TRUE

@@ -347,7 +347,7 @@ app_ui <- function(request) {
     golem_add_external_resources(),
     
     bootstrapPage(
-      #useShinyjs(),
+      useShinyjs(),
       #extendShinyjs(text = jsCode,functions=c("getParams")),
       
       

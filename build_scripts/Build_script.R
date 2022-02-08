@@ -25,7 +25,7 @@ library(devtools)
 
 
 
-defaultSpeciesValues <- readxl::read_xlsx("data-raw/mCRM_bird_parameter_Defaults.xlsx")
+defaultSpeciesValues <- readxl::read_xlsx("data-raw/mCRM_bird_parameter_Defaults v2.0.xlsx")
 
 for(i in 1:nrow(defaultSpeciesValues)){
   migmonths <- unlist(str_split(defaultSpeciesValues$Post_breed_mig_months[i],","))
