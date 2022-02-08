@@ -5,6 +5,7 @@
 #' @import shiny
 #' @import shinyBS
 #' @import shinyWidgets
+#' @import shinyalert
 #' @import dplyr
 #' @import stringr
 #' @import leaflet
@@ -12,11 +13,16 @@
 #' @import tibble
 #' @import stochLAB
 #' @import foreach
+#' @import officedown
+#' @importFrom readxl excel_sheets
+#' @importFrom readxl read_xlsx
+#' @importFrom tools file_ext
 #' @importFrom DT renderDataTable
 #' @noRd
 #' 
 #' 
 app_server <- function( input, output, session ) {
+
 
   #' ----------------------------------------------------
   #  ----         setting session specifics          ----
@@ -58,8 +64,7 @@ app_server <- function( input, output, session ) {
     densityDataPresent = NULL, NAsFreeData = NULL, FHD_acceptable = NULL, speciesFieldFilled= NULL
   )
   
-  
-  
+
   # --- Generate temporary paths and folders for storing session's specific data 
   sessTempOutFolder <- getTempFolderName()
   path2ShinyOut_Inputs <- file.path("shinyOutputs", sessTempOutFolder, "inputs")
@@ -164,12 +169,10 @@ app_server <- function( input, output, session ) {
       }
       birdspecieslist$birdspcs <- BirdNames()
     }
-    
   })
   
   observeEvent(input$selectInput_builtin_speciesList,{
     count <- length(BirdNames())
-    
     output$Species_Count <- renderUI(
       if(count == 1){
         p(paste(count,"species has been selected"))  
@@ -185,16 +188,11 @@ app_server <- function( input, output, session ) {
   ## into a data frame, which is then used to present as an R Hands on table on the
   ## Front end UI
   bird.data.rvs <- reactive({
-    
     sapply(BirdNames(),
            function(x){
-             
              id_name <- defaultSpeciesValues$Scientific_name[which(defaultSpeciesValues$Common_name == x)]
              id_name <- stringr::str_replace_all(id_name," ","_")
-             
-             
              data.frame(
-               #species = id_name,
                flying = eval(parse(text=paste0("input$`",id_name,"-slctInput_biomPars_flType_tp`"))),
                bdlenE = eval(parse(text=paste0("input$`",id_name,"-biomPars_bodyLt_E_numInput`"))),
                bdlenSD = eval(parse(text=paste0("input$`",id_name,"-biomPars_bodyLt_SD_numInput`"))),
@@ -212,17 +210,13 @@ app_server <- function( input, output, session ) {
                PostBM = eval(parse(text=paste0("input$`",id_name,"-switch_post_breeding_migration`"))),
                OthBM = eval(parse(text=paste0("input$`",id_name,"-switch_other_migration`")))
              )
-             
-             
            },simplify=FALSE,USE.NAMES=TRUE)
-    
   })
   
   ## As per the bird.data.rvs only for the wind farm data
   wf.data.rvs <- reactive({
     sapply(WFshapes()$NAME,
            function(x){
-             #id_name <- species_data$Scientific[which(species_data$Common == x)]
              x <- stringr::str_replace_all(x," ","_")
              tt <- data.frame(
                Latitude = eval(parse(text=paste0("input$`",x,"-numInput_windfarmPars_Latitude`"))),
@@ -237,7 +231,6 @@ app_server <- function( input, output, session ) {
                BldPitchE <- eval(parse(text=paste0("input$`",x,"-turbinePars_bladePitch_E_numInput`"))),
                BldPitchSD <- eval(parse(text=paste0("input$`",x,"-turbinePars_bladePitch_SD_numInput`")))
              )
-             
              winddatatable <- eval(parse(text=paste0(
                "rhandsontable::hot_to_r(input$`",x,"-hotInput_turbinePars_monthOps`)"
              )))
@@ -247,24 +240,66 @@ app_server <- function( input, output, session ) {
              SDDT <- winddatatable[3,]
              names(SDDT) <- paste0(month.abb," SD down time")
              tt <- do.call("cbind",list(tt,meanWA,meanDT,SDDT))
-             
              return(tt)
-             
            },simplify=FALSE,USE.NAMES=TRUE)
-    
   })
 
 
-  
   observeEvent(input$button_generate_scenarios  ,{
+    BirdTest <- tryCatch(bird.data.rvs()[[1]],
+                         error=function(e) NULL)
+    if(!is.null(BirdTest)){
+      BirdTest <- tryCatch(BirdTest[[1]],
+                           error=function(e) NULL)
+    }
     
+    if(is.null(BirdTest)){
+      shinyalert::shinyalert(
+        title = "Error",
+        text = "No birds have been selected, return to Step 2",
+        size = "s", 
+        closeOnEsc = TRUE,
+        closeOnClickOutside = FALSE,
+        html = FALSE,
+        type = "error",
+        showConfirmButton = TRUE,
+        showCancelButton = FALSE,
+        confirmButtonText = "OK",
+        confirmButtonCol = "#AEDEF4",
+        timer = 0,
+        imageUrl = "",
+        animation = TRUE
+      )
+      req(BirdTest)
+    }
     
-    BirdNames <- BirdNames()
-    WFNames <- WFshapes()$NAME
+    wfTest <- tryCatch(wf.data.rvs(),
+                       error=function(e) NULL)
+    if(is.null(wfTest)){
+      shinyalert::shinyalert(
+        title = "Error",
+        text = "No wind farms have been selected, return to Step 1",
+        size = "s", 
+        closeOnEsc = TRUE,
+        closeOnClickOutside = FALSE,
+        html = FALSE,
+        type = "error",
+        showConfirmButton = TRUE,
+        showCancelButton = FALSE,
+        confirmButtonText = "OK",
+        confirmButtonCol = "#AEDEF4",
+        timer = 0,
+        imageUrl = "",
+        animation = TRUE
+      )
+      req(wfTest)
+    }
     
+    BirdNames <- tryCatch(BirdNames(),
+                          error=function(e) NULL)
+    WFNames <- tryCatch(WFshapes()$NAME,
+                        error=function(e) NULL)
     bird_scenario_table <- tibble(Species = BirdNames)
-    
-    
     bird_scenario_table <- foreach(i=1:nrow(bird_scenario_table),.combine='rbind') %do% {
       xx <- cbind(bird_scenario_table[i,],bird.data.rvs()[[bird_scenario_table$Species[i]]])
       if(xx$PreBM == TRUE){
@@ -284,27 +319,22 @@ app_server <- function( input, output, session ) {
       }
       return(xx)
     }
-    #browser()
     
     output$hotInput_output_bird_scenarios <- renderRHandsontable(
-      
       bird_scenario_table %>%
         rhandsontable(selectCallback = TRUE,rowHeaders=NULL, colHeaders = c("Species",  
-                                                      "Flight","Body Length",
-                                                      "Body Length SD", "Wingspan", "Wingspan SD",
-                                                      "Flight speed", "Flight speed SD",
-                                                      "Avoidance", "Avoidance SD", "PCH","Biogeographic population",
-                                                      "Proportion in UK", "Total population in UK", 
-                                                      "Pre-breeding migration","Post-breeding migration",
-                                                      "Other migration")) %>%
+                                                                            "Flight","Body Length",
+                                                                            "Body Length SD", "Wingspan", "Wingspan SD",
+                                                                            "Flight speed", "Flight speed SD",
+                                                                            "Avoidance", "Avoidance SD", "PCH","Biogeographic population",
+                                                                            "Proportion in UK", "Total population in UK", 
+                                                                            "Pre-breeding migration","Post-breeding migration",
+                                                                            "Other migration")) %>%
         hot_cols() %>%
         hot_table(highlightCol = TRUE, highlightRow = TRUE) %>%
         hot_context_menu(allowRowEdit = TRUE, allowColEdit = FALSE)
-      
     )
     
-    
-    #browser()
     wind_scenario_table <- tibble(WindFarm = WFNames)
     
     wind_scenario_table <- foreach(i=1:nrow(wind_scenario_table),.combine='rbind') %do% {
@@ -314,20 +344,17 @@ app_server <- function( input, output, session ) {
     
     #browser()
     output$hotInput_output_wf_scenarios <- renderRHandsontable(
-      
       wind_scenario_table %>%
         rhandsontable(selectCallback = TRUE,rowHeaders=NULL, colHeaders = c("Wind farm","Latitude","Width","Proportion upwind flight",
-                                                      "Number of turbines","Number of blades",
-                                                      "Rotor radius", "Blade width",
-                                                      "Rotation Speed", "Rotation Speed SD", "Blade Pitch", "Blade Pitch SD",
-                                                      paste0(month.abb," wind available"),paste0(month.abb," mean downtime"),
-                                                      paste0(month.abb," SD downtime"))) %>%
+                                                                            "Number of turbines","Number of blades",
+                                                                            "Rotor radius", "Blade width",
+                                                                            "Rotation Speed", "Rotation Speed SD", "Blade Pitch", "Blade Pitch SD",
+                                                                            paste0(month.abb," wind available"),paste0(month.abb," mean downtime"),
+                                                                            paste0(month.abb," SD downtime"))) %>%
         hot_cols() %>%
         hot_table(highlightCol = TRUE, highlightRow = TRUE) %>%
         hot_context_menu(allowRowEdit = TRUE, allowColEdit = FALSE)
-      
     )
-    
     
     ### 10000 lines, 2000 samples with 500 bootstraps from sensitivity analysis Sept 2021
     ### This samples each windfarm x species combination to generation populations
@@ -338,13 +365,10 @@ app_server <- function( input, output, session ) {
     WFshapes <- as(WFshapes(), "sf")
     WFshapes <- sf::st_transform(WFshapes,sf::st_crs(all_lines$batgo))
     
-    
     Population_estimates <- expand.grid(WFshapes()$NAME,BirdNames)
     names(Population_estimates) <- c("Wind farm", "Species")
     Population_estimates$Estimate <- NA
     Population_estimates$EstimateSD <- NA
-    
-    
     
     withProgress(message = "Generating population estimates",value=0,{
       for(k in 1:nrow(Population_estimates)){
@@ -354,8 +378,6 @@ app_server <- function( input, output, session ) {
         speclines <- eval(parse(text=paste0("all_lines$",btonm)))
         ## Population is multiplied by proportion in UK waters
         popSizemn <- bird.data.rvs()[Population_estimates$Species[k]][[1]]$Totalpop
-          #defaultSpeciesValues$biogeographic_pop[defaultSpeciesValues$Common_name == Population_estimates$Species[k]] * defaultSpeciesValues$prop_uk_waters
-        #popSizesd <- species_data$PopulationSizeSD[defaultSpeciesValues$Common_name == Population_estimates$Species[k]]
         Estimates <- vector(length=boot.iters)
         
         withProgress(message = "bootstrapping", value=0, {
@@ -363,29 +385,20 @@ app_server <- function( input, output, session ) {
             incProgress(1/boot.iters)
             PopVal <- popSizemn
             Estimates[j] <- ceiling(length(GetSampleProp(speclines,samplesize,WFshapes[Population_estimates$`Wind farm`[k],]))/samplesize * PopVal)
-            
           }
         })
         Population_estimates$Estimate[k] <- ceiling(mean(Estimates,na.rm=TRUE))
         Population_estimates$EstimateSD[k] <- ceiling(sd(Estimates,na.rm=TRUE))
-        
       }
     })
     
-    
-    
     output$hotInput_output_population_scenarios <- renderRHandsontable(
-      
       Population_estimates %>%
         rhandsontable(selectCallback = TRUE,rowHeaders=NULL, colHeaders = c("Wind farm","Species", "Population estimate","Population estimate (SD)")) %>%
         hot_cols() %>%
         hot_table(highlightCol = TRUE, highlightRow = TRUE) %>%
         hot_context_menu(allowRowEdit = TRUE, allowColEdit = FALSE)
-      
-      
     )
-    
-    
     
     
   })
@@ -410,12 +423,12 @@ app_server <- function( input, output, session ) {
   })
   BirdsData <- reactive({
     Df <- hot_to_r(input$hotInput_output_bird_scenarios)
-    names(Df) <- c("Species",  
+    names(Df) <- c("Species",
                    "Flight","Body Length",
                    "Body Length SD", "Wingspan", "Wingspan SD",
                    "Flight Speed", "Flight Speed SD",
                    "Avoidance", "Avoidance SD", "PCH","Biogeographic population",
-                   "Proportion in UK", "Total population in UK", 
+                   "Proportion in UK", "Total population in UK",
                    "PrBMigration","PoBMigration",
                    "OMigration")
     Df[is.na(Df)] <- "NA"
@@ -431,12 +444,44 @@ app_server <- function( input, output, session ) {
   
   ## Handler for the modal to input the filename
   observeEvent(input$button_download_scenarios_modal,{
-    showModal(modalDialog(
-      title = "Download model scenario worksheet",
-      textInput("txtInput_dwnld_scenario_name",label="Input filename for download (e.g., model_scenario_1)"),
-      downloadButton("button_download_scenarios","Download worksheet"),
-      easyClose=TRUE
-    ))
+    
+    BirdDat <- tryCatch(BirdsData(),
+                        error=function(e) NULL)
+    TurbineDat <- tryCatch(WindFarmsData(),
+                           error=function(e) NULL)
+    CountDat <- tryCatch(ScenariosData(),
+                         error=function(e) NULL)
+    
+    check.dat <- TRUE
+    if(is.null(BirdDat)|is.null(TurbineDat)|is.null(CountDat)){
+      check.dat <- FALSE
+    }
+    
+    if(check.dat == FALSE){
+      shinyalert::shinyalert(
+        title = "Error",
+        text = "Scenarios have not been generated, please click 'Generate Scenarios'",
+        size = "s", 
+        closeOnEsc = TRUE,
+        closeOnClickOutside = FALSE,
+        html = FALSE,
+        type = "error",
+        showConfirmButton = TRUE,
+        showCancelButton = FALSE,
+        confirmButtonText = "OK",
+        confirmButtonCol = "#AEDEF4",
+        timer = 0,
+        imageUrl = "",
+        animation = TRUE
+      )
+    }else{
+      showModal(modalDialog(
+        title = "Download model scenario worksheet",
+        textInput("txtInput_dwnld_scenario_name",label="Input filename for download (e.g., model_scenario_1)"),
+        downloadButton("button_download_scenarios","Download worksheet"),
+        easyClose=TRUE
+      ))
+    }
   })
   
   
@@ -447,28 +492,205 @@ app_server <- function( input, output, session ) {
       paste(input$txtInput_dwnld_scenario_name,".xlsx", sep = "")
     },
     content = function(file) {
-      wb <- openxlsx::createWorkbook()
-      
-      openxlsx::addWorksheet(wb,sheetName="BirdData")
-      openxlsx::addWorksheet(wb,sheetName="TurbineData")
-      openxlsx::addWorksheet(wb,sheetName="CountData")
-      
-      openxlsx::writeData(wb,sheet="BirdData",BirdsData())
-      openxlsx::writeData(wb,sheet="TurbineData",WindFarmsData())
-      openxlsx::writeData(wb,sheet="CountData",ScenariosData())
-      openxlsx::saveWorkbook(wb,file,overwrite=TRUE)
-    }
+        wb <- openxlsx::createWorkbook()
+        BirdDat <- tryCatch(BirdsData(),
+                            error=function(e) NULL)
+        TurbineDat <- tryCatch(WindFarmsData(),
+                               error=function(e) NULL)
+        CountDat <- tryCatch(ScenariosData(),
+                             error=function(e) NULL)
+        
+        openxlsx::addWorksheet(wb,sheetName="BirdData")
+        openxlsx::addWorksheet(wb,sheetName="TurbineData")
+        openxlsx::addWorksheet(wb,sheetName="CountData")
+        
+        openxlsx::writeData(wb,sheet="BirdData",BirdDat)
+        openxlsx::writeData(wb,sheet="TurbineData",TurbineDat)
+        openxlsx::writeData(wb,sheet="CountData",CountDat)
+        openxlsx::saveWorkbook(wb,file,overwrite=TRUE)
+      }
   )
- 
+
   
-  
-  
+
+# Upload scenario handlers  -----------------------------------------------
+
+  ## Function for the upload scenarios modal
+  observeEvent(input$button_upload_scenarios_modal,{
+    showModal(modalDialog(
+      title = "Upload model scenario",
+      fileInput("worksheet", "Choose XLSX File", accept = ".xlsx"),
+      actionButton("button_upload_scenarios","Upload Scenarios", class="btn btn-primary"),
+      easyClose=TRUE
+    ))
+  })
+  ## Function for opening the data file - will also do data checks
+  observeEvent(input$button_upload_scenarios, {
+    dat <- input$worksheet
+    ext <- tools::file_ext(dat$datapath)
+    req(dat)
+    
+    ### Check extension to make sure an xlsx is loaded
+    if(ext != "xlsx"){
+      shinyalert::shinyalert(
+        title = "Error",
+        text = "Data must be an XLSX",
+        size = "s", 
+        closeOnEsc = TRUE,
+        closeOnClickOutside = FALSE,
+        html = FALSE,
+        type = "error",
+        showConfirmButton = TRUE,
+        showCancelButton = FALSE,
+        confirmButtonText = "OK",
+        confirmButtonCol = "#AEDEF4",
+        timer = 0,
+        imageUrl = "",
+        animation = TRUE
+      )
+      validate(need(ext=="xlsx","Please upload an xlsx"))
+    }
+    #browser()
+    
+    list_all <- lapply(readxl::excel_sheets(dat$datapath),function(x){
+      as.data.frame(readxl::read_xlsx(dat$datapath,sheet=x))
+    })
+    
+    ### Check Bird parameter table names
+    BDnames <- c("Species",
+                 "Flight","Body Length",
+                 "Body Length SD", "Wingspan", "Wingspan SD",
+                 "Flight Speed", "Flight Speed SD",
+                 "Avoidance", "Avoidance SD", "PCH","Biogeographic population",
+                 "Proportion in UK", "Total population in UK",
+                 "PrBMigration","PoBMigration",
+                 "OMigration")
+    if(!identical(names(list_all[[1]]),BDnames)){
+      shinyalert::shinyalert(
+        title = "Error",
+        text = "Bird parameter sheet names are not correct. Please check documentation and try again.\
+        TIP: Check capitalization and spacing in your column names. Best practice is to download the worksheet \
+        and then fill it in without changing column names. You could also download the worksheet then copy and paste \
+        column names from that worksheet into your own.",
+        size = "s", 
+        closeOnEsc = TRUE,
+        closeOnClickOutside = FALSE,
+        html = FALSE,
+        type = "error",
+        showConfirmButton = TRUE,
+        showCancelButton = FALSE,
+        confirmButtonText = "OK",
+        confirmButtonCol = "#AEDEF4",
+        timer = 0,
+        imageUrl = "",
+        animation = TRUE
+      )
+      validate(need(identical(names(list_all[[1]]),BDnames),"BD names not identical"))
+    }
+    
+    ### Check Wind Farm table names
+    WFnames <- c("Wind farm","Latitude","Width","Proportion upwind flight",
+                 "Number of turbines","Number of blades",
+                 "Rotor radius", "Blade width",
+                 "Rotation Speed", "Rotation Speed SD", "Blade Pitch", "Blade Pitch SD",
+                 paste0(month.abb," wind available"),paste0(month.abb," mean downtime"),
+                 paste0(month.abb," SD downtime"))
+    
+    if(!identical(names(list_all[[2]]),WFnames)){
+      shinyalert::shinyalert(
+        title = "Error",
+        text = "Wind farm parameter sheet names are not correct. Please check documentation and try again.\
+        TIP: Check capitalization and spacing in your column names. Best practice is to download the worksheet \
+        and then fill it in without changing column names. You could also download the worksheet then copy and paste \
+        column names from that worksheet into your own.",
+        size = "s", 
+        closeOnEsc = TRUE,
+        closeOnClickOutside = FALSE,
+        html = FALSE,
+        type = "error",
+        showConfirmButton = TRUE,
+        showCancelButton = FALSE,
+        confirmButtonText = "OK",
+        confirmButtonCol = "#AEDEF4",
+        timer = 0,
+        imageUrl = "",
+        animation = TRUE
+      )
+      validate(need(identical(names(list_all[[2]]),WFnames),"WF names not identical"))
+    }
+    
+    ### Check names on count data / population estimates
+    CTnames <- c("Wind farm","Species", "Population estimate","Population estimate (SD)")
+    if(!identical(names(list_all[[3]]),CTnames)){
+      shinyalert::shinyalert(
+        title = "Error",
+        text = "Count/Population parameter sheet names are not correct. Please check documentation and try again.\
+        TIP: Check capitalization and spacing in your column names. Best practice is to download the worksheet \
+        and then fill it in without changing column names. You could also download the worksheet then copy and paste \
+        column names from that worksheet into your own.",
+        size = "s", 
+        closeOnEsc = TRUE,
+        closeOnClickOutside = FALSE,
+        html = FALSE,
+        type = "error",
+        showConfirmButton = TRUE,
+        showCancelButton = FALSE,
+        confirmButtonText = "OK",
+        confirmButtonCol = "#AEDEF4",
+        timer = 0,
+        imageUrl = "",
+        animation = TRUE
+      )
+      validate(need(identical(names(list_all[[3]]),CTnames),"CT names not identical"))
+    }
+    
+    ## If the validation passes, load the data
+    
+    output$hotInput_output_bird_scenarios <- renderRHandsontable(
+      list_all[[1]] %>%
+        rhandsontable(selectCallback = TRUE,rowHeaders=NULL, colHeaders = c("Species",  
+                                                                            "Flight","Body Length",
+                                                                            "Body Length SD", "Wingspan", "Wingspan SD",
+                                                                            "Flight speed", "Flight speed SD",
+                                                                            "Avoidance", "Avoidance SD", "PCH","Biogeographic population",
+                                                                            "Proportion in UK", "Total population in UK", 
+                                                                            "Pre-breeding migration","Post-breeding migration",
+                                                                            "Other migration")) %>%
+        hot_cols() %>%
+        hot_table(highlightCol = TRUE, highlightRow = TRUE) %>%
+        hot_context_menu(allowRowEdit = TRUE, allowColEdit = FALSE)
+    )
+    
+    
+    output$hotInput_output_wf_scenarios <- renderRHandsontable(
+      list_all[[2]] %>%
+        rhandsontable(selectCallback = TRUE,rowHeaders=NULL, colHeaders = c("Wind farm","Latitude","Width","Proportion upwind flight",
+                                                                            "Number of turbines","Number of blades",
+                                                                            "Rotor radius", "Blade width",
+                                                                            "Rotation Speed", "Rotation Speed SD", "Blade Pitch", "Blade Pitch SD",
+                                                                            paste0(month.abb," wind available"),paste0(month.abb," mean downtime"),
+                                                                            paste0(month.abb," SD downtime"))) %>%
+        hot_cols() %>%
+        hot_table(highlightCol = TRUE, highlightRow = TRUE) %>%
+        hot_context_menu(allowRowEdit = TRUE, allowColEdit = FALSE)
+    )
+    
+    
+    output$hotInput_output_population_scenarios <- renderRHandsontable(
+      list_all[[3]] %>%
+        rhandsontable(selectCallback = TRUE,rowHeaders=NULL, colHeaders = c("Wind farm","Species", "Population estimate","Population estimate (SD)")) %>%
+        hot_cols() %>%
+        hot_table(highlightCol = TRUE, highlightRow = TRUE) %>%
+        hot_context_menu(allowRowEdit = TRUE, allowColEdit = FALSE)
+    )
+  })
   
 
   # Create reactive values list for storing model output --------------------
 
   mcrmOut <- reactiveValues(
-    mCRM_output_ls = NULL
+    mCRM_output_ls = NULL,
+    mCRM_boots_ls = NULL
   )
   
   
@@ -476,753 +698,236 @@ app_server <- function( input, output, session ) {
   
   observeEvent(input$actButtonInput_simulPars_GO,{
     
-    BirdDat <- BirdsData()
-    TurbineDat <- WindFarmsData()
-    CountDat <- ScenariosData()
-    names(BirdDat) <- str_replace_all(names(BirdDat)," ","")
-    names(TurbineDat) <- str_replace_all(names(TurbineDat)," ","")
-    names(CountDat) <- str_replace_all(names(CountDat)," ","")
+    BirdDat <- tryCatch(BirdsData(),
+                        error=function(e) NULL)
+    TurbineDat <- tryCatch(WindFarmsData(),
+                           error=function(e) NULL)
+    CountDat <- tryCatch(ScenariosData(),
+                         error=function(e) NULL)
     
-    outputs <- matrix(nrow=nrow(CountDat),ncol=11)
+    check.dat <- TRUE
+    if(is.null(BirdDat)|is.null(TurbineDat)|is.null(CountDat)){
+      check.dat <- FALSE
+    }
     
-    withProgress(message = "Running mCRM",value=0,{
-      for(i in 1:nrow(CountDat)){
-        incProgress(1/nrow(CountDat),detail=paste0("Running scenario ", i,"/",nrow(CountDat) ))
-        spp_name <- as.character(CountDat$Species[i])
-        wf_name <- as.character(CountDat$Windfarm[i])
-        BirdData <- BirdDat %>% dplyr::filter(Species == spp_name)
-        TurbineData <- TurbineDat %>% dplyr::filter(Windfarm == wf_name)
-        CountData <- CountDat[i,]
-        outs <- mig_stoch_crm(BirdData,TurbineData,CountData,iter=1000,spp_name,LargeArrayCorrection = T)
-        ## Send outputs to matrix
-        outputs[i,1] <- spp_name
-        outputs[i,2] <- wf_name
-        outputs[i,3] <- paste(round(mean(outs[,1],na.rm=T),3), "\u00B1", round(sd(outs[,1],na.rm=T),3))
-        outputs[i,4] <- paste(round(mean(outs[,2],na.rm=T),3), "\u00B1", round(sd(outs[,2],na.rm=T),3))
-        outputs[i,5] <- paste(round(mean(outs[,3],na.rm=T),3), "\u00B1", round(sd(outs[,3],na.rm=T),3))
-        ## Set raw values to matrix as well so they can be used for cumulative assessments
-        outputs[i,6] <- round(mean(outs[,1],na.rm=T),3)
-        outputs[i,7] <- round(sd(outs[,1],na.rm=T),3)  
-        outputs[i,8] <- round(mean(outs[,2],na.rm=T),3) 
-        outputs[i,9] <- round(sd(outs[,2],na.rm=T),3) 
-        outputs[i,10] <- round(mean(outs[,3],na.rm=T),3)
-        outputs[i,11] <- round(sd(outs[,3],na.rm=T),3)
-      }
-      
-    })
-    
-    
-    outputs <- data.frame(outputs)
-    names(outputs)[1:5] <- c('Species',"windfarm","PrBMigration","PoBMigration","OMigration")
-    
-    PreBreedout <- reshape2::dcast(outputs[,c(1:3)],formula = Species ~windfarm)
-    PostBreedout <- reshape2::dcast(outputs[,c(1,2,4)],formula = Species ~windfarm)
-    Otherout <- reshape2::dcast(outputs[,c(1,2,5)],formula = Species ~windfarm)
-    
-    ## Create summary table
-    cumulTab <- outputs %>%
-      group_by(Species) %>%
-      dplyr::summarise(PrBsum = sum(as.numeric(X6),na.rm=TRUE),
-                                           PrBsd = sum.stdevs(as.numeric(X7)),
-                                           PoBsum = sum(as.numeric(X8),na.rm=TRUE),
-                                           PoBsd = sum.stdevs(as.numeric(X9)),
-                                           Osum = sum(as.numeric(X10),na.rm=TRUE),
-                                           Osd = sum.stdevs(as.numeric(X11))) %>%
-      dplyr::rowwise() %>%
-      dplyr::mutate(
-                    'Pre-breeding total' = paste(PrBsum, "\u00B1", round(PrBsd,3)),
-                    'Post-breeding total' = paste(PoBsum, "\u00B1", round(PoBsd,3)),
-                    'Other total' = paste(Osum, "\u00B1", round(Osd,3)),
-                    'Total' = paste(sum(dplyr::c_across(c(PrBsum,PoBsum,Osum))),"\u00B1",round(sum.stdevs(dplyr::c_across(c(PrBsd,PoBsd,Osd))),3))
-                    ) %>%
-      dplyr::select(-PrBsum,-PrBsd,-PoBsum,-PoBsd,-Osum,-Osd)
-    
-    
-    output$summTable_DT_PrB<- DT::renderDataTable({
-      datatable(PreBreedout,rownames=FALSE)
-    })
-    output$summTable_DT_PoB<- DT::renderDataTable({
-      datatable(PostBreedout,rownames=FALSE)
-    })
-    output$summTable_DT_O<- DT::renderDataTable({
-      datatable(Otherout,rownames=FALSE)
-    })
-    output$cumulTable_DT<- DT::renderDataTable({
-      datatable(cumulTab,rownames=FALSE)
-    })
-    
-    
-    output$Simulation_Download <- renderUI({
-      tagList(
-        column(12, align = "right", 
-               shinyBS::tipify(downloadButton("dwnld_ModelOuts", "Download Outputs"), 
-                      title = "Download zip file with plots and tables presented below", 
-                      placement = "left", trigger = "hover", options = list(container = "body"))),
-        
+    if(check.dat == FALSE){
+      shinyalert::shinyalert(
+        title = "Error",
+        text = "Scenarios have not been generated, please return to Step 3 and click 'Generate Scenarios'",
+        size = "s", 
+        closeOnEsc = TRUE,
+        closeOnClickOutside = FALSE,
+        html = FALSE,
+        type = "error",
+        showConfirmButton = TRUE,
+        showCancelButton = FALSE,
+        confirmButtonText = "OK",
+        confirmButtonCol = "#AEDEF4",
+        timer = 0,
+        imageUrl = "",
+        animation = TRUE
       )
-    })
-    
-    
-  })  
-  
-  
-  
-  
-  
-
-  # --- render UI section for model outputs dynamically, according to the selected species.
-  output$simResults_UI <- renderUI({
-    
-    req(rv$sCRM_output_ls)
-    
-    modelOutputs <- rv$sCRM_output_ls
-    
-    cSelSpec <- isolate(slctSpeciesTags())
-    
-    tabs <- map2(cSelSpec$species, cSelSpec$specLabel, results_tabPanelsBuilder)
-    
-    tagList(
-      column(2, align = "right", offset = 10, 
-             tipify(downloadButton("dwnld_ModelOuts", "Download Outputs"), 
-                    title = "Download zip file with plots and tables presented below", 
-                    placement = "left", trigger = "hover", options = list(container = "body"))),
-      br(),
-      br(),
-      invoke(tabBox, tabs,  width = 12) #, height = "250px")
-    )
-  })
-  
-  
-  
-  
-  
-  
-  # --- Manages downloads of data templates
-  observeEvent(rv$addedSpec, {
-    
-    walk(rv$addedSpec, function(x){
-      
-      specLabel <- slctSpeciesTags() %>% dplyr::filter(species == x) %>% dplyr::pull(specLabel) #gsub(" ", "_", x)
-      
-      # FHD boostrap data
-      downlTag_FHD <- paste0("dwnld_template_FHD_", specLabel)
-      
-      output[[downlTag_FHD]] <- downloadHandler(
-        filename = function() {
-          "FHD_bootstrapData_template.csv"
-        },
-        content = function(file) {
-          write.csv(template_FHD, file, row.names = FALSE)
-        }
-      )
-      
-      
-      # Monthly bird densities reference points stats
-      downlTag_monthDens_summ <- paste0("dwnld_template_monthDens_summaries_", specLabel)
-      
-      output[[downlTag_monthDens_summ]] <- downloadHandler(
-        filename = function() {
-          "monthDensities_distRefPoints_template.csv"
-        },
-        content = function(file) {
-          write.csv(template_monthDens_summaries, file, row.names = FALSE)
-        }
-      )
-      
-      
-      # Monthly bird densities 
-      downlTag_monthDens_samp <- paste0("dwnld_template_monthDens_samples_", specLabel)
-      
-      output[[downlTag_monthDens_samp]] <- downloadHandler(
-        filename = function() {
-          "monthDensities_distSamples_template.csv"
-        },
-        content = function(file) {
-          write.csv(template_monthDens_samples, file, row.names = FALSE)
-        }
-      )
-    })
-  })
-  
-  
-  
-
-  
-  
-  #' -----------------------------------------------------------------
-  #  ----                  Outputs Management                     ----
-  #' -----------------------------------------------------------------
-  
-  # --- Generates plots for biometric variables based on input values of their hyperparameters
-  observeEvent(rv$biomParsInputs_ls, {
-    
-    req(length(rv$biomParsInputs_ls)>0)
-    
-    inputs_currBiomPars_df <- rv$biomParsInputs_ls %>%
-      ldply(function(x){data.frame(Value = as.character(x))}, .id = "inputTags") %>%
-      mutate(inputTags_split = stringr::str_split(inputTags, "_")) %>%
-      mutate(specLabel = map_chr(inputTags_split, function(x) paste(x[-c(1:4)], collapse = "_")),
-             par = map_chr(inputTags_split, function(x) x[3]),
-             hyper = map_chr(inputTags_split, function(x) x[4]),
-             par_hyper = paste(par, hyper, sep = "_"), 
-             parName = case_when(
-               par == "bodyLt" ~ "Body length (m)",
-               par == "wngSpan" ~ "Wing Span (m)",
-               par == "flSpeed" ~ "Flight Speed (m/s)",
-               par == "noctAct" ~ "Nocturnal Activity (proportion)",
-               par == "basicAvoid" ~ "Basic avoidance (probability)",
-               par == "extAvoid" ~ "Extended avoidance (probability)",
-               par == "CRHeight" ~ "CRH (proportion)"
-             ))
-    
-    inputs_currBiomParsPlottable <- inputs_currBiomPars_df %>%
-      dplyr::filter(hyper %in% c("E", "SD")) %>%
-      dplyr::select(-inputTags_split) %>%
-      dplyr::mutate(plotTag = paste0("plot_biomPars_", par, "_", specLabel),
-             qtTag =  paste0("qtls_biomPars_", par, "_", specLabel),
-             Value = as.numeric(as.character(Value)))
-    
-    if(!is.null(inputs_BiomParsPlotted)){
-      inputs_currBiomParsPlottable %<>% dplyr::mutate(inputTags = as.character(inputTags))
-      inputs_BiomParsPlotted %<>% dplyr::mutate(inputTags = as.character(inputTags))
-      inputs_BiomParsChanged <- setdiff(inputs_currBiomParsPlottable, inputs_BiomParsPlotted)
-      inputs_BiomParsToPlot <- inputs_currBiomParsPlottable %>% dplyr::filter(plotTag %in% inputs_BiomParsChanged$plotTag)
-      # print(inputs_BiomParsChanged)
     }else{
-      inputs_BiomParsToPlot <- inputs_currBiomParsPlottable
+      names(BirdDat) <- str_replace_all(names(BirdDat)," ","")
+      names(TurbineDat) <- str_replace_all(names(TurbineDat)," ","")
+      names(CountDat) <- str_replace_all(names(CountDat)," ","")
+      
+      outputs <- matrix(nrow=nrow(CountDat),ncol=11)
+      
+      withProgress(message = "Running mCRM",value=0,{
+        for(i in 1:nrow(CountDat)){
+          incProgress(1/nrow(CountDat),detail=paste0("Running scenario ", i,"/",nrow(CountDat) ))
+          spp_name <- as.character(CountDat$Species[i])
+          wf_name <- as.character(CountDat$Windfarm[i])
+          BirdData <- BirdDat %>% dplyr::filter(Species == spp_name)
+          TurbineData <- TurbineDat %>% dplyr::filter(Windfarm == wf_name)
+          CountData <- CountDat[i,]
+          ### Split the months to get start and end months for the season_specs table
+          ssPrB <- strsplit(BirdData$PrBMigration," - ")[[1]]
+          if(length(ssPrB)>1){
+            PrBSt <- ssPrB[1]
+            PrBEn <- ssPrB[2]
+          }else{
+            PrBSt <- NA
+            PrBEn <- NA
+          }
+          ssPoB <- strsplit(BirdData$PoBMigration," - ")[[1]]
+          if(length(ssPoB)>1){
+            PoBSt <- ssPoB[1]
+            PoBEn <- ssPoB[2]
+          }else{
+            PoBSt <- NA
+            PoBEn <- NA
+          }
+          ssO <- strsplit(BirdData$OMigration," - ")[[1]]
+          if(length(ssO)>1){
+            OSt <- ssO[1]
+            OEn <- ssO[2]
+          }else{
+            OSt <- NA
+            OEn <- NA
+          }
+          season_specs <- data.frame(
+            season_id = c("PrBMigration", "PoBMigration", "OMigration"),
+            start_month = c(PrBSt, PoBSt, OSt), end_month = c(PrBEn, PoBEn, OEn)
+          )
+          
+          ## Create wind availability table
+          windavb <- data.frame(reshape2::melt(TurbineData %>% select(Janwindavailable:Decwindavailable)))
+          names(windavb) <- c("month","pctg")
+          windavb$month <- month.abb
+          
+          DTmn <- reshape2::melt(TurbineData %>% select(Janmeandowntime:Decmeandowntime)) %>% mutate(variable=month.abb)
+          DTsd <- reshape2::melt(TurbineData %>% select(JanSDdowntime:DecSDdowntime)) %>% mutate(variable=month.abb)
+          dwntm <- DTmn %>% left_join(DTsd,by="variable")
+          names(dwntm) <- c("month","mean","sd")
+          
+        
+          outs <- mig_stoch_crm(
+            wing_span_pars = data.frame(mean = BirdData$Wingspan, sd = BirdData$WingspanSD),      # Wing span in m,
+            flt_speed_pars = data.frame(mean = BirdData$FlightSpeed, sd = BirdData$FlightSpeedSD),       # Flight speed in m/s
+            body_lt_pars = data.frame(mean = BirdData$BodyLength, sd = BirdData$BodyLengthSD),       # Body length in m,
+            prop_crh_pars = data.frame(mean = BirdData$PCH, sd = 0),                              # Proportion of birds at CRH
+            avoid_bsc_pars = data.frame(mean = BirdData$Avoidance, sd = BirdData$AvoidanceSD),     # avoidance rate
+            n_turbines = TurbineData$Numberofturbines,
+            n_blades = TurbineData$Numberofblades,
+            rtn_speed_pars = data.frame(mean = TurbineData$RotationSpeed, sd = TurbineData$RotationSpeedSD),         # rotation speed in m/s of turbine blades
+            bld_pitch_pars = data.frame(mean = TurbineData$BladePitch, sd = TurbineData$BladePitchSD),          # pitch in degrees of turbine blades
+            rtr_radius_pars = data.frame(mean = TurbineData$Rotorradius, sd = 0),          # sd = 0, rotor radius is fixed
+            bld_width_pars = data.frame(mean = TurbineData$Bladewidth, sd = 0),            # sd = 0, blade width is fixed
+            wf_width = TurbineData$Width,
+            wf_latitude = TurbineData$Latitude,
+            prop_upwind = TurbineData$Proportionupwindflight/100,
+            flight_type = tolower(BirdData$Flight),
+            popn_estim_pars = data.frame(mean = CountData$Populationestimate, sd = CountData$`Populationestimate(SD)`),    # population flying through windfarm,
+            season_specs = season_specs,
+            chord_profile = stochLAB::chord_prof_5MW,
+            trb_wind_avbl = windavb,
+            trb_downtime_pars = dwntm,
+            n_iter = input$sldInput_simulPars_numIter,
+            LargeArrayCorrection = TRUE,
+            log_file = NULL,
+            seed = 1234,
+            verbose = FALSE)
+          
+          ## Send outputs to reactive Values list so they can be accessed
+          mcrmOut$mCRM_boots_ls[[wf_name]][[spp_name]] <- outs
+          ## Send outputs to matrix
+          outputs[i,1] <- spp_name
+          outputs[i,2] <- wf_name
+          outputs[i,3] <- paste(round(mean(outs[,1],na.rm=T),3), "\u00B1", round(sd(outs[,1],na.rm=T),3))
+          outputs[i,4] <- paste(round(mean(outs[,2],na.rm=T),3), "\u00B1", round(sd(outs[,2],na.rm=T),3))
+          outputs[i,5] <- paste(round(mean(outs[,3],na.rm=T),3), "\u00B1", round(sd(outs[,3],na.rm=T),3))
+          ## Set raw values to matrix as well so they can be used for cumulative assessments
+          outputs[i,6] <- round(mean(outs[,1],na.rm=T),3)
+          outputs[i,7] <- round(sd(outs[,1],na.rm=T),3)  
+          outputs[i,8] <- round(mean(outs[,2],na.rm=T),3) 
+          outputs[i,9] <- round(sd(outs[,2],na.rm=T),3) 
+          outputs[i,10] <- round(mean(outs[,3],na.rm=T),3)
+          outputs[i,11] <- round(sd(outs[,3],na.rm=T),3)
+        }
+        
+      })
+      
+      
+      outputs <- data.frame(outputs)
+      names(outputs)[1:5] <- c('Species',"windfarm","PrBMigration","PoBMigration","OMigration")
+      
+      PreBreedout <- reshape2::dcast(outputs[,c(1:3)],formula = Species ~windfarm)
+      PostBreedout <- reshape2::dcast(outputs[,c(1,2,4)],formula = Species ~windfarm)
+      Otherout <- reshape2::dcast(outputs[,c(1,2,5)],formula = Species ~windfarm)
+      
+      ## Create summary table
+      cumulTab <- outputs %>%
+        group_by(Species) %>%
+        dplyr::summarise(PrBsum = sum(as.numeric(X6),na.rm=TRUE),
+                         PrBsd = sum.stdevs(as.numeric(X7)),
+                         PoBsum = sum(as.numeric(X8),na.rm=TRUE),
+                         PoBsd = sum.stdevs(as.numeric(X9)),
+                         Osum = sum(as.numeric(X10),na.rm=TRUE),
+                         Osd = sum.stdevs(as.numeric(X11))) %>%
+        dplyr::rowwise() %>%
+        dplyr::mutate(
+          'Pre-breeding total' = paste(PrBsum, "\u00B1", round(PrBsd,3)),
+          'Post-breeding total' = paste(PoBsum, "\u00B1", round(PoBsd,3)),
+          'Other total' = paste(Osum, "\u00B1", round(Osd,3)),
+          'Total' = paste(sum(dplyr::c_across(c(PrBsum,PoBsum,Osum))),"\u00B1",round(sum.stdevs(dplyr::c_across(c(PrBsd,PoBsd,Osd))),3))
+        ) %>%
+        dplyr::select(-PrBsum,-PrBsd,-PoBsum,-PoBsd,-Osum,-Osd)
+      
+      
+      mcrmOut$mCRM_output_ls[['PreBreedout']] <- PreBreedout
+      mcrmOut$mCRM_output_ls[['PostBreedout']] <- PostBreedout
+      mcrmOut$mCRM_output_ls[['Otherout']] <- Otherout
+      mcrmOut$mCRM_output_ls[['cumulTab']] <- cumulTab
+      
+
+      output$summTable_DT_PrB<- DT::renderDataTable({
+        datatable(PreBreedout,rownames=FALSE)
+      })
+      output$summTable_DT_PoB<- DT::renderDataTable({
+        datatable(PostBreedout,rownames=FALSE)
+      })
+      output$summTable_DT_O<- DT::renderDataTable({
+        datatable(Otherout,rownames=FALSE)
+      })
+      output$cumulTable_DT<- DT::renderDataTable({
+        datatable(cumulTab,rownames=FALSE)
+      })
+      
+      
+      output$Simulation_Download <- renderUI({
+        tagList(
+          column(12, align = "right", 
+                 shinyBS::tipify(downloadButton("dwnld_ModelOuts", "Download Outputs"), 
+                                 title = "Download zip file with plots and tables presented below", 
+                                 placement = "left", trigger = "hover", options = list(container = "body"))),
+          
+        )
+      })
     }
-    
-    #print(inputs_BiomParsToPlot)
-    
-    plotTagsToPlot <- unique(inputs_BiomParsToPlot$plotTag)
-    
-    if(length(plotTagsToPlot)>0){
-      for(i in 1:length(plotTagsToPlot)){
-        local({
-          c_tag <- plotTagsToPlot[i] 
-          cPlotData <- inputs_BiomParsToPlot %>% dplyr::filter(plotTag == c_tag)
-          c_qtTag <- unique(cPlotData$qtTag)
-          c_par <- unique(cPlotData$par)
-          
-          mu <- as.numeric(as.character(dplyr::filter(cPlotData, hyper == "E")$Value))
-          stdev <- as.numeric(as.character(dplyr::filter(cPlotData, hyper == "SD")$Value))
-          
-          output[[c_tag]] <- renderPlot({
-            #print(c_tag)
-            if(c_par %in% c("bodyLt", "wngSpan", "flSpeed")){
-              truncNormPars_densPlots(mu = mu, stdev = stdev, lower = 0, fill="darkorange", xlab = unique(cPlotData$parName))
-            }else{
-              if(c_par %in% c("noctAct", "basicAvoid", "extAvoid", "CRHeight")){
-                betaInputPars_densPlots(p = mu, stdev = stdev, fill="darkorange", xlab = unique(cPlotData$parName))
-              }else{
-                normDens_ParsPlots(mu = mu, stdev = stdev, fill="darkorange", xlab = unique(cPlotData$parName), refValue_SD = stdev*1.5)  
-              }
-            }
-          })
-          
-          output[[c_qtTag]] <- renderPrint({
-            if(c_par %in% c("bodyLt", "wngSpan", "flSpeed")){
-              truncNormPars_qtlTbl(mu = mu, stdev = stdev, lower = 0, varTag = c_par, decPlaces = 4) 
-            }else{
-              if(c_par %in% c("noctAct", "basicAvoid", "extAvoid", "CRHeight")){
-                betaInputPars_qtlTbl(p = mu, stdev = stdev, varTag = c_par, decPlaces = 4)
-              }else{
-                normDens_ParsQtls(mu = mu, stdev = stdev, varTag = c_par, decPlaces = 4) 
-              }
-            }
-          })
-        })
-      }
-      # update values of currently plotted biometric parameters
-      inputs_BiomParsPlotted <<- inputs_currBiomParsPlottable
-    }
-  })
-  
-  
-  
 
-  
-  ## --- Generates plots for Turbine parameters
-  observe({
-    mu <- input$numInput_turbinePars_rotnSpeed_E_
-    stdev <- input$numInput_turbinePars_rotnSpeed_SD_
-    
-    output$plot_turbinePars_rotnSpeed <- renderPlot({
-      
-      #sdRef <- ifelse(startUpValues$rotnSpeed_SD/stdev < 0.25, startUpValues$rotnSpeed_SD*10, startUpValues$rotnSpeed_SD)
-      truncNormPars_densPlots(mu = mu, stdev = stdev, lower = 0, fill = "olivedrab", xlab = "Rotation Speed (rpm)")
-    })
-    
-    output$qtls_turbinePars_rotnSpeed <- renderPrint({
-      truncNormPars_qtlTbl(mu = mu, stdev = stdev, lower = 0, varTag = "RotnSpeed")
-    })
-  })
-  
-  
-  observe({
-    mu <- input$numInput_turbinePars_bladePitch_E_
-    stdev <- input$numInput_turbinePars_bladePitch_SD_
-    
-    output$plot_turbinePars_bladePitch <- renderPlot({
-      #sdRef <- ifelse(startUpValues$bladePitch_SD/stdev < 0.25, startUpValues$bladePitch_SD*10, startUpValues$bladePitch_SD)
-      truncNormPars_densPlots(mu = mu, stdev = stdev, lower = 0, fill = "olivedrab", xlab = "Blade Pitch (degrees)")
-    })
-    
-    output$qtls_turbinePars_bladePitch <- renderPrint({
-      truncNormPars_qtlTbl(mu = mu, stdev = stdev, lower = 0, varTag = "bladePitch")
-    })
-  }) 
-  
-  
-  
-  observe({
-    mu <- input$numInput_miscPars_windSpeed_E_
-    stdev <- input$numInput_miscPars_windSpeed_SD_
-    
-    output$plot_miscPars_windSpeed <- renderPlot({
-      sdRef <- ifelse(startUpValues$turbinePars$windSpeed_SD/stdev < 0.25, startUpValues$turbinePars$windSpeed_SD*5, 
-                      startUpValues$turbinePars$windSpeed_SD)
-      truncNormPars_densPlots(mu = mu, stdev = stdev, lower = 0, fill = "olivedrab", xlab = "Wind Speed (m/s)")
-    })
-    
-    output$qtls_miscPars_windSpeed <- renderPrint({
-      truncNormPars_qtlTbl(mu = mu, stdev = stdev, lower = 0, varTag = "WindSpeed")
-    })
-    
-  })
-  
-  
-
-
-
-
-  #' --------------------------------------------------------------------------------------------------
-  #  ---- Prepare & check input data for simulation, triggered when user pushes go        ----
-  #' --------------------------------------------------------------------------------------------------
-  
-  # observeEvent(input$actButtonInput_simulPars_GO, {
-  #   
-  #   missingValues <- list()
-  #   
-  #   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  #   # ---  Check if at least one species selected
-  #   
-  #   # Launch error message and block simulation if species field is empty; else, carry on
-  #   if(is.null(slctSpeciesTags())){
-  #     
-  #     rv$speciesFieldFilled <- FALSE
-  #     
-  #     # Modal describing error to the user
-  #     sendSweetAlert(
-  #       session = session,
-  #       title = "No species selected",
-  #       text = span(
-  #         style = "font-size: 15px; text-align: left",
-  #         hr(),
-  #         br(),
-  #         tags$b("Please select at least one species in 'Step 2: Specie(s)'", style = "font-size: 15px; text-align: center")
-  #       ),
-  #       type = "error",
-  #       html = TRUE
-  #     )
-  #     
-  #     req(rv$speciesFieldFilled)
-  #     
-  #   }else{
-  #     
-  #     rv$speciesFieldFilled <- TRUE
-  #   }
-  #   
-  #   
-  #   
-  #   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  #   # -------  bird biometric data
-  #   
-  #   # -- gather data
-  #   birdBiomData <- rv$biomParsInputs_ls %>%
-  #     ldply(function(x){data.frame(Value = as.character(x))}, .id = "inputTags") %>%
-  #     dplyr::mutate(inputTags_split = stringr::str_split(inputTags, "_")) %>%
-  #     dplyr::mutate(specLabel = map_chr(inputTags_split, function(x) paste(x[-c(1:4)], collapse = "_")),
-  #            par = map_chr(inputTags_split, function(x) x[3]),
-  #            hyper = map_chr(inputTags_split, function(x) x[4]),
-  #            par_hyper = paste(par, hyper, sep = "_")) %>%
-  #     dplyr::select(-c(inputTags, inputTags_split, par, hyper)) %>%
-  #     dplyr::semi_join(., slctSpeciesTags(), by = "specLabel")  # filter for currently selected species
-  #   
-  #   
-  #   # -- Check for NAs and save affected parameters
-  #   missingValues[["birdBiom"]] <- birdBiomData %>%
-  #     dplyr::filter(is.na(Value)) %>%
-  #     arrange(specLabel) %>%
-  #     dplyr::select(-Value) %>%
-  #     mutate(specName = str_replace_all(specLabel, "_", " "))
-  #   
-  #   
-  #   # Data manipulation for model
-  #   rv$birdata_model <- birdBiomData %>%
-  #     spread(par_hyper, Value) %>%
-  #     dplyr::rename(Species = specLabel, AvoidanceBasic = basicAvoid_E, AvoidanceBasicSD = basicAvoid_SD,
-  #            AvoidanceExtended = extAvoid_E, AvoidanceExtendedSD = extAvoid_SD, Body_Length = bodyLt_E, Body_LengthSD = bodyLt_SD,
-  #            Wingspan = wngSpan_E, WingspanSD = wngSpan_SD, Flight_Speed = flSpeed_E, Flight_SpeedSD = flSpeed_SD,
-  #            Nocturnal_Activity = noctAct_E, Nocturnal_ActivitySD = noctAct_SD, Flight = flType_tp,
-  #            Prop_CRH_Obs = CRHeight_E, Prop_CRH_ObsSD = CRHeight_SD) %>%
-  #     dplyr::select(Species, AvoidanceBasic, AvoidanceBasicSD, AvoidanceExtended, AvoidanceExtendedSD, Body_Length, Body_LengthSD,
-  #            Wingspan, WingspanSD, Flight_Speed, Flight_SpeedSD, Nocturnal_Activity, Nocturnal_ActivitySD, Flight,
-  #            Prop_CRH_Obs, Prop_CRH_ObsSD)
-  #   
-  #   
-  #   
-  #   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  #   # -- birds FHD
-  #   #
-  #   # FHD data source chosen for each species
-  #   RVs_inputs_ls <- reactiveValuesToList(input)
-  #   FHD_UserOptions_ls <- RVs_inputs_ls[grep("userOpts_FHD_dtSrc", names(RVs_inputs_ls))]
-  #   
-  #   # Check for missing FHD data for each selected species
-  #   FHD_dataStatus <- FHD_UserOptions_ls %>%
-  #     map2_dfr(., names(.), function(x, y){
-  #       
-  #       specLabel <- map_chr(stringr::str_split(y, "_"), ~ paste(.[-c(1:4)], collapse = "_"))
-  #       
-  #       if(x == "default"){
-  #         tibble(specLabel = specLabel) %>%
-  #           mutate(missingFHD = ifelse(file.exists(paste0("data/", specLabel, "_ht_dflt.csv")), FALSE, TRUE))
-  #         
-  #       }else{
-  #         if(x == "other"){
-  #           cUserFHD_LsIndice <- str_which(safe_names(flgtHghDstInputs_ls()), specLabel)
-  #           tibble(specLabel = specLabel) %>%
-  #             mutate(missingFHD = ifelse(length(cUserFHD_LsIndice) > 0, FALSE, TRUE))
-  #         }
-  #       }
-  #     })%>%
-  #     semi_join(., slctSpeciesTags(), by = "specLabel")  # filter for currently selected species
-  #   
-  # 
-  #   
-  #   # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  #   # # --------- turbine data 
-  # 
-  #   if(nrow(missingValues) > 0){
-  #     
-  #     # flag presence of NAs in data
-  #     rv$NAsFreeData <- FALSE
-  #     
-  #     # Modal describing error to the user
-  #     sendSweetAlert(
-  #       session = session,
-  #       title = "Found missing values in inputs",
-  #       text = span(
-  #         style = "font-size: 15px; text-align: left",
-  #         hr(),
-  #         p("NAs assigned to inputs in the following sections"),
-  #         tags$ul(
-  #           missingValues %>%
-  #             split(.$dataMainType) %>%
-  #             map(function(x){
-  #               if(unique(x$dataMainType) == "speciesFeatures"){
-  #                 tags$li(tags$u("Species features"),
-  #                         tags$ul(
-  #                           map(unique(x$specName), tags$li)
-  #                         ), br())
-  #               }else{
-  #                 if(unique(x$dataMainType) == "turbineFeatures"){
-  #                   tags$li(tags$u("Turbine and/or wind farm features"))
-  #                 }
-  #               }
-  #             })
-  #         ),
-  #         br(),
-  #         tags$b("Please fill in empty fields (highlighted in red) before proceeding to simulation", style = "font-size: 15px; text-align: center")
-  #       ),
-  #       type = "error",
-  #       html = TRUE
-  #     )
-  #     
-  #     #browser()
-  #     
-  #   }else{
-  #     # flag data is free off NAs
-  #     rv$NAsFreeData <- TRUE
-  #   }
-  #   
-  #   # Flick the trigger 
-  #   rv$simCodeTrigger <- rv$simCodeTrigger + 1
-  # })
-  # 
-  
- 
-  #' -----------------------------------------------------------------------
-  #  ----            Collision Risk Simulation Model                    ----
-  #' -----------------------------------------------------------------------
-  
-  #observeEvent(input$actButtonInput_simulPars_GO, {
-  #observeEvent(rv$simCodeTrigger, ignoreInit = TRUE, {})
-  
-  
-  
-  
-  # -----------------------------------------------------------------------
-  #  ----            Compute and display model outputs                  ----
-  # -------------------------------------------------------+----------------
-  
-  # Arrange results data into a data.frame
-  sCRM_outputDF <- eventReactive(rv$sCRM_output_ls, {
-    
-    req(rv$sCRM_output_ls)
-    
-    listLevels <- expand.grid(option = names(rv$sCRM_output_ls), specLabel = names(rv$sCRM_output_ls[[1]]), 
-                              turbineModel =  names(rv$sCRM_output_ls[[1]][[1]]))
-    
-    pmap(list(x=as.character(listLevels$option), y=as.character(listLevels$specLabel), z=as.character(listLevels$turbineModel)), 
-         function(x, y, z) {
-           data.frame(option = x, specLabel = y, turbineModel = z, rv$sCRM_output_ls[[x]][[y]][[z]]) %>%
-             mutate(option = str_replace(option, "monthCollsnReps_opt", "Option "),
-                    turbineModel = str_replace(turbineModel, "turbModel", ""), 
-                    iter = 1:nrow(.))
-         }
-    ) %>%
-      dplyr::bind_rows()
-  })
-  
-  
-  
-  
-  observe({
-    
-    df <- sCRM_outputDF()
-    
-    req(nrow(df) > 0)
-    
-    # Set-up progress bar for the construction of plots and tables from model outputs
-    progress_genModelOuts <- Progress$new()
-    on.exit(progress_genModelOuts$close())
-    progress_genModelOuts$set(message = "Generating outputs", value = 0)
-    pbarNSteps <- 6
-    
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # ~~  boxplots and summary tables of collisons per month, for each option and species  ~~~ #
-    
-    df_monthlyColl <- df %>%
-      gather(Month, Collisions, -c(option, specLabel, turbineModel, iter)) %>%
-      mutate(Month = factor(Month, levels = unique(Month)),
-             specLabel = as.character(specLabel)) %>%
-      group_by(specLabel, option, turbineModel) %>%
-      nest()
-    
-    # update pbar
-    progress_genModelOuts$inc(1/pbarNSteps)
-    
-    # --- plots
-    df_monthlyColl %>%
-      mutate(plot = pmap(list(dt = data, spec = specLabel, opt = option), function(dt, spec, opt){
-        
-        dt %<>% mutate(opt = opt)
-        plotTag <- paste0(spec, "_plot_monthCollisions_", str_replace(opt, " ", ""))
-        # print(plotTag)
-        
-        p <- ggplot(dt) +
-          geom_boxplot(aes(x = Month, y = Collisions), fill = "mediumpurple1", alpha = 0.8) +
-          facet_wrap(~opt) +
-          theme(legend.position="none") +
-          labs(y="Number of Collisions", x = "") +
-          theme(strip.background=element_rect(fill="grey95"))
-        
-        output[[plotTag]] <- renderPlot(p)
-        
-        # save plot externally
-        p2 <- p+labs(title=str_replace_all(specLabel, "_", " "))
-        ggsave(paste0(plotTag, ".png"), p2, path = path2ShinyOut_Outputs, width = 19, height = 12, units = "cm") 
-        
-      }))
-    
-    # update pbar
-    progress_genModelOuts$inc(2/pbarNSteps)
-    
-    
-    # --- summary tables
-    df_monthlyColl %>%
-      mutate(sumTable = pmap(list(dt = data, spec = specLabel, opt = option), function(dt, spec, opt){
-        
-        dt %<>% 
-          group_by(Month) %>%
-          summarise(Mean = mean(Collisions), 
-                    SD = sd(Collisions), CV = SD/Mean, 
-                    Median = median(Collisions), 
-                    #IQR = IQR(Collisions), 
-                    `2.5%` = quantile(Collisions, 0.025), 
-                    `25%` = quantile(Collisions, 0.25),
-                    `75%` = quantile(Collisions, 0.75),
-                    `97.5%` = quantile(Collisions, 0.975)
-          ) %>%
-          dplyr::mutate_at(.vars = vars(Mean:`97.5%`), list(~sprintf(fmt = "%.3f", .)))
-        
-        
-        #print(dt)
-        
-        sumTableTag <- paste0(spec, "_summTable_monthCollisions_", str_replace(opt, " ", ""))
-        #print(sumTableTag)
-        
-        output[[sumTableTag]] <- renderDataTable({
-          datatable(dt, rownames = FALSE, 
-                    caption = paste0("Model ", opt), 
-                    options = list(pageLength = 12, dom = 't'))
-        })
-        
-        fwrite(dt, file.path(path2ShinyOut_Outputs, paste0(sumTableTag, ".csv")))
-        
-      }))
-    
-    # update pbar
-    progress_genModelOuts$inc(3/pbarNSteps)
-    
-    
-    
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # ~~ density plots and summary tables of overall collisons, for each option and species   ~~~ #
-    
-    df_overallColl <- df %>%
-      gather(Month, Collisions, -c(option, specLabel, turbineModel, iter)) %>%
-      mutate(Month = factor(Month, levels = unique(Month)),
-             specLabel = as.character(specLabel)) %>%
-      group_by(option, specLabel, turbineModel, iter) %>%
-      summarise(overalCollisions = sum(Collisions)) %>%
-      group_by(specLabel, turbineModel) %>%
-      nest()
-    
-    
-    # update pbar
-    progress_genModelOuts$inc(4/pbarNSteps)
-    
-    
-    # -- Plots
-    df_overallColl %>%
-      mutate(plot=pmap(list(dt = data, spec = specLabel), function(dt, spec){
-        
-        plotTag <- paste0(spec, "_plot_overallCollisions")
-        #print(plotTag)
-        
-        p <- ggplot(dt) +
-          geom_density(aes(x = overalCollisions, colour = option, fill = option), alpha = 0.2) +
-          labs(x="Number of Collisions", y = "Probability Density") +
-          scale_colour_brewer(palette = "Set1") +
-          scale_fill_brewer(palette = "Set1") +
-          theme(legend.title=element_blank(), legend.position="top") 
-        
-        output[[plotTag]] <- renderPlot(p)
-        
-        # save plot externally
-        p2 <- p+labs(title=str_replace_all(specLabel, "_", " "))
-        ggsave(paste0(plotTag, ".png"), p2, path = path2ShinyOut_Outputs, width = 19, height = 12, units = "cm")
-      }))
-    
-    
-    # update pbar
-    progress_genModelOuts$inc(5/pbarNSteps)
-    
-    
-    # -- Summary tables
-    df_overallColl %>%
-      mutate(sumPlot = pmap(list(dt = data, spec = specLabel, turb = turbineModel), function(dt, spec, turb){
-        
-        dt %<>%
-          mutate(Turbine = turb) %>%
-          dplyr::rename(Option = option) %>%
-          group_by(Turbine, Option) %>%
-          summarise(Mean = mean(overalCollisions), 
-                    SD = sd(overalCollisions), CV = SD/Mean, Median = median(overalCollisions), 
-                    #IQR = IQR(overalCollisions), 
-                    `2.5%` = quantile(overalCollisions, 0.025), 
-                    `25%` = quantile(overalCollisions, 0.25),
-                    `75%` = quantile(overalCollisions, 0.75),
-                    `97.5%` = quantile(overalCollisions, 0.975)) %>%
-          mutate_at(.vars = vars(Mean:`97.5%`), list(~sprintf(fmt = "%.3f", .))) %>%
-          ungroup() %>% select(-Turbine)  # leave turbine model out of the table for now - current version with only one turbine model per simulation
-        
-        #print(dt)
-        
-        sumTableTag <- paste0(spec, "_summTable_overallCollisions")
-        #print(sumTableTag)
-        
-        output[[sumTableTag]] <- renderDataTable({
-          datatable(dt, rownames = FALSE, 
-                    options = list(
-                      #autoWidth = TRUE,
-                      pageLength = 12, 
-                      dom = 't'))
-        })
-        
-        fwrite(dt, file.path(path2ShinyOut_Outputs, paste0(sumTableTag, ".csv")))
-      }))
-    
-    # update pbar
-    progress_genModelOuts$inc(6/pbarNSteps)
-    
-  })
-  
-  
-  
-  
-  # --------------------------------------------------------------------------------------------------------
-  #  ----   Massage and relocate summaries of randomly generated parameter values for user's Download    ----
-  # --------------------------------------------------------------------------------------------------------
-  
-  observeEvent(rv$sCRM_output_ls, {
-    
-    slctSpecLabels <- slctSpeciesTags()$specLabel
-    
-    # Turbine parameters
-    turbSampFiles <- list.files(path = file.path(path2Outputs_results, "tables/"), pattern = "_sampledTurbineParameters")
-    
-    walk(turbSampFiles, function(x){
-      
-      cSpecLabel <- slctSpecLabels[str_which(string = x, slctSpecLabels)]
-      
-      cSpecTurbSampledData <- fread(paste0(path2Outputs_results, "/tables/", x)) %>%
-        select(-V1) %>%
-        mutate_at(.vars = vars(Mean:IQR), list(~sprintf(fmt = "%.4f", .)))
-      
-      fwrite(cSpecTurbSampledData, file = file.path(path2ShinyOut_Outputs, paste0(cSpecLabel, "_sampledTurbineParameters.csv")))
-    })
-    
-    
-    # Bird parameters
-    birdSampFiles <- list.files(path =file.path(path2Outputs_results, "tables/"), pattern = "_sampledBirdParameters")
-    
-    walk(birdSampFiles, function(x){
-      
-      cSpecLabel <- slctSpecLabels[str_which(string = x, slctSpecLabels)]
-      
-      cSpecBirdSampledData <- fread(paste0(path2Outputs_results, "/tables/", x)) %>%
-        select(-V1) %>%
-        mutate_at(.vars = vars(Mean:IQR), list(~sprintf(fmt = "%.4f", .)))
-      
-      fwrite(cSpecBirdSampledData, file = file.path(path2ShinyOut_Outputs, paste0(cSpecLabel, "_sampledBirdParameters.csv")))
-    })
-    
-  })
-  
-  
+  })  
   
   
   
   # ----------------------------------------------------------------
   #  ----              Download model outputs                    ----
   # ----------------------------------------------------------------
-  
+
   output$dwnld_ModelOuts <- downloadHandler(
-    filename = function() {
-      "modelOutputs.zip"
-    },
+    filename = "modelOut.docx",
     content = function(file) {
-      basedir <- getwd()
-      setwd(file.path("shinyOutputs", sessTempOutFolder))
-      fs <- list.files()
-      zip(zipfile = file, files = fs)
-      setwd(basedir)
+      
+      # Copy the report file to a temporary directory before processing it, in
+      # case we don't have write permissions to the current working dir (which
+      # can happen when deployed).
+      tempReport <- file.path(tempdir(), "Report.Rmd")
+      file.copy("Report.Rmd", tempReport, overwrite = TRUE)
+      
+      # Set up parameters to pass to Rmd document
+      #testdf <- data.frame(col1=c(1,2,3,4,5),col2=c(2,3,4,5,6))
+      #browser()
+      params <- list(prebreedtable = mcrmOut$mCRM_output_ls[['PreBreedout']],
+                     postbreedtable = mcrmOut$mCRM_output_ls[['PostBreedout']],
+                     othertable = mcrmOut$mCRM_output_ls[['Otherout']],
+                     cumultable = mcrmOut$mCRM_output_ls[['cumulTab']],
+                     bootdata = mcrmOut$mCRM_boots_ls)
+      
+      # Knit the document, passing in the `params` list, and eval it in a
+      # child of the global environment (this isolates the code in the document
+      # from the code in this app).
+      rmarkdown::render(tempReport, output_file = file,
+                        params = params,
+                        envir = new.env(parent = globalenv())
+      )
+      #basedir <- getwd()
+      #setwd(file.path("shinyOutputs", sessTempOutFolder))
+      #fs <- list.files()
+      #zip(zipfile = file, files = fs)
+      #setwd(basedir)
     },
-    contentType = "application/zip"
+    #contentType = "application/zip"
   )
   
   

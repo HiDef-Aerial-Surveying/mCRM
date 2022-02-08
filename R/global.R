@@ -2,11 +2,3 @@
 #' @import ggplot2
 #' @importFrom grDevices colorRampPalette
 #' @importFrom RColorBrewer brewer.pal
-
-#source("BandModel_function.R")
-
-
-
-
-
-

@@ -1,0 +1,102 @@
+---
+title: "Migration Collision Risk Estimates"
+date: '`r format(Sys.Date(), "%d. %B %Y")`'
+params:
+  prebreedtable: NA
+  postbreedtable: NA
+  othertable: NA
+  cumultable: NA
+  bootdata: NA
+output: officedown::rdocx_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(officedown)
+library(hrbrthemes)
+library(ggplot2)
+library(viridis)
+library(plyr)
+```
+
+This is an automatically generated report created by the migration collision risk model (mCRM) web application.  
+The tool can be found at: <https://hidefdevo.shinyapps.io/mcrm>, and its associated GitHub repo can be found at: <https://www.github.com/HiDef-Aerial-Surveying/mCRM>.  
+The tool acts as a wrapped for the stochLAB package <https://www.github.com/HiDef-Aerial-Surveying/stochLAB>, written by Bruno Caneco (bruno@dmpstats.com) and Grant Humphries (grant.humphries@hidefsurveying.co.uk).
+
+<!---BLOCK_LANDSCAPE_START--->
+# Tables
+
+```{r summary tables}
+knitr::kable(params$prebreedtable,caption="Pre-breeding collisions")
+knitr::kable(params$postbreedtable,caption="Post-breeding collisions")
+knitr::kable(params$othertable,caption="other season collisions")
+knitr::kable(params$cumultable,caption="Cumulative collisions")
+```
+<!---BLOCK_LANDSCAPE_STOP--->
+
+# Collision risk distributions
+
+```{r plots, results="asis"}
+for(i in names(params$bootdata)){
+  
+  cat("##", i, "\n")
+  ## Ldply species together to make long-format data frame for plotting
+  
+  plotdat <- data.frame(plyr::ldply(params$bootdata[[i]]))
+  
+  ## Only plot if there are data to plot
+  if(!is.na(sum(plotdat$PrBMigration))){
+    cat("### Pre-breeding migration \n")
+    G1 <- ggplot(plotdat, aes(x = PrBMigration,color = .id, fill = .id)) +
+      geom_density(alpha = 0.7) +
+      facet_wrap(~.id ,nrow = 3,scales = "free")+
+      scale_color_viridis(discrete=TRUE) +
+      scale_fill_viridis(discrete=TRUE) +
+      labs(x="Collision estimates", y="Density")+
+      hrbrthemes::theme_ipsum_rc(grid="XY", axis="xy") +
+      hrbrthemes::theme_ipsum_rc(axis_title_size=20)+
+      theme(legend.position="none")
+    tryCatch(print(G1),error=function(e) NULL)
+  }
+  
+  if(!is.na(sum(plotdat$PoBMigration))){
+  cat("### Post-breeding migration \n")
+  G2 <- ggplot(plotdat, aes(x = PoBMigration,color = .id, fill = .id)) +
+    geom_density(alpha = 0.7) +
+    facet_wrap(~.id ,nrow = 3,scales = "free")+
+    scale_color_viridis(discrete=TRUE) +
+    scale_fill_viridis(discrete=TRUE) +
+    labs(x="Collision estimates", y="Density")+
+    hrbrthemes::theme_ipsum_rc(grid="XY", axis="xy") +
+    hrbrthemes::theme_ipsum_rc(axis_title_size=20)+
+    theme(legend.position="none")
+  tryCatch(print(G2),error=function(e) NULL)
+  }
+  
+  if(!is.na(sum(plotdat$Omigration))){
+  cat("### other migration \n")
+  G3 <- ggplot(plotdat, aes(x = Omigration,color = .id, fill = .id)) +
+    geom_density(alpha = 0.7) +
+    facet_wrap(~.id ,nrow = 3,scales = "free")+
+    scale_color_viridis(discrete=TRUE) +
+    scale_fill_viridis(discrete=TRUE) +
+    labs(x="Collision estimates", y="Density")+
+    hrbrthemes::theme_ipsum_rc(grid="XY", axis="xy") +
+    hrbrthemes::theme_ipsum_rc(axis_title_size=20)+
+    theme(legend.position="none")
+  tryCatch(print(G3),error=function(e) NULL)
+  }
+}
+
+
+
+```
+
+
+
+
+
+
+
+
+

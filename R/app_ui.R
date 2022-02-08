@@ -5,6 +5,7 @@
 #' @import shinydashboard
 #' @import shinycssloaders
 #' @import shinyjs
+#' @import shinyalert
 #' @import shinyBS
 #' @import rhandsontable
 #' @import plyr
@@ -29,41 +30,6 @@
 
 
 # Set some globals ------------------------------------------------------
-
-ggplot2::theme_set(ggplot2::theme_bw())
-
-
-species <- sort(c("Arctic Skua", "Northern Fulmar", "Great Black-backed Gull", "Common Guillemot", "Northern Gannet",
-                  "Black-legged Kittiwake", "Lesser Black-Backed Gull", "Little Auk", "Atlantic Puffin", 
-                  "Razorbill", "Arctic Tern", "Black-headed Gull", "Black-throated Diver", "Common Gull", "Common Scoter",
-                  "Common Tern", "Cormorant", "Eider", "European Shag", "Herring Gull", "Little Gull", "Manx Shearwater",
-                  "Red-throated Diver", "Sandwich Tern"))
-
-
-defaultSpecies<- "Black-legged Kittiwake"
-
-# generate continuous Spectral pallete
-Spectral_pal_cont <- grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(11,"Spectral")))
-YlOrRd_pal_cont <- grDevices::colorRampPalette(c("white", RColorBrewer::brewer.pal(9,"YlOrRd")))
-PuBuGn_pal_cont <- grDevices::colorRampPalette(RColorBrewer::brewer.pal(9,"PuBuGn"))
-YlOrBr_pal_cont <- grDevices::colorRampPalette(c("white",RColorBrewer::brewer.pal(9,"YlOrBr")))
-manual1_pal_cont <- grDevices::colorRampPalette(rev(c("#8E063B", "#AB4147", "#C56551", "#DA8459", "#E99F61", "#F2B669", "#F6C971", "#F4D97B", "#EDE388", "#E2E6BD", "#e0e2cc", "#f1f2e6")))
-manual2_pal_cont <- grDevices::colorRampPalette(rev(c("#7D0112", "#8E2C19", "#9E4723", "#AD5F30", "#BC763E", "#C88C4F", "#D4A261", "#DEB675", "#E6C98A", "#ECDAA0", "#F1E9B8", "#F2F1E4")))
-
-# javascript code for extendShinyjs to highlight NAs in input fields
-jsCode <- '
-shinyjs.backgroundCol = function(params) {
-var defaultParams = {
-id : null,
-col : "red"
-};
-params = shinyjs.getParams(params, defaultParams);
-var el = $("#" + params.id);
-el.css("background-color", params.col);
-}'
-
-NAsHighlightColor <- "#FDC0C0"
-
 
 app_ui <- function(request) {
   
@@ -257,7 +223,7 @@ app_ui <- function(request) {
                  column(3,
                         actionButton("button_download_scenarios_modal","Download Scenarios", class="btn-lg btn-warning")),
                  column(3,
-                        actionButton("button_upload_scenarios","Upload Scenarios", class="btn-lg btn-primary")),
+                        actionButton("button_upload_scenarios_modal","Upload Scenarios", class="btn-lg btn-primary")),
                  column(3,
                         a(href='mCRM_worksheet.xlsx',"Download Scenario worksheet",download=NA,target="_blank",
                           class="btn btn-default action-button btn-lg btn-info"))
@@ -329,9 +295,7 @@ app_ui <- function(request) {
                                           icon = icon("cogs"), width = "100%")
                          ),
                          box(title="Download Outputs",width=12,status="primary",solidHeader=TRUE,
-                             
                              uiOutput("Simulation_Download")
-                             
                              )
                          
                          ),
@@ -375,8 +339,6 @@ app_ui <- function(request) {
                        title = "Restore inputs to latest stored values",
                        options = list(container = "body"), placement = "bottom", trigger = "hover")
     
-    
-    
   )
   
   
@@ -385,9 +347,9 @@ app_ui <- function(request) {
     golem_add_external_resources(),
     
     bootstrapPage(
-      useShinyjs(),
-      extendShinyjs(text = jsCode,functions=c("backgroundCol","getParams")),
-      useSweetAlert(),
+      #useShinyjs(),
+      #extendShinyjs(text = jsCode,functions=c("getParams")),
+      
       
       # Add custom CSS & Javascript;
       tagList(tags$head(
