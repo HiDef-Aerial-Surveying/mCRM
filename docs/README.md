@@ -1,3 +1,9 @@
+---
+title: "Migration Collision Risk Estimates"
+date: '`r format(Sys.Date(), "%d. %B %Y")`'
+---
+
+
 Avian migration collision risk model
 
 # Migratory collision risk model (mCRM) application
