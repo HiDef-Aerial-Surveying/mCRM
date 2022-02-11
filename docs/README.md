@@ -1,5 +1,3 @@
-title: "Migration Collision Risk Estimates"
-
 # Migratory collision risk model (mCRM) application
 
 <!-- badges: start -->
