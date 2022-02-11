@@ -1,6 +1,6 @@
 
 <!-- badges: start -->
-<img src='images/hexSticker.png' align="left" height="139" />
+<img src='images/hexSticker.png' align="left" height="139" style="margin-right:20px;" />
 <!-- badges: end -->
 
 The migration collision risk model (mCRM) shiny application is a stochastic adaptation of the Band (2012) migration collision risk worksheet.  The tool can be found at !(https://hidefdevo.shinyapps.io/mCRM)[https://hidefdevo.shinyapps.io/mCRM].   
