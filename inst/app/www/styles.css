@@ -1,7 +1,13 @@
-@media screen and (max-width:480px) {  
-  .dropdown .headerimg img {
-    display: none;
+@media screen and (max-width:1500px) {  
+  .dropdown.headerimg {
+    display: none !important;
   }
+}
+
+@media (max-width: 767px)
+.main-header.navbar {
+    margin: 0;
+    margin-bottom: 40px !important;
 }
 
 
@@ -10,18 +16,7 @@
   padding-bottom: 5px;
 }
 
-
-/* .skin-blue .main-sidebar {
-   background-color: #f4b943;
-   font-family: "Calibri";
-   font-size:25px;             
-   line-height:1.42857143;
-   color:#ebebeb;
-   }
-*/
-
 /* Color scheme: Feather: #77C9D4, Marine: #57BC90, Forest: #015249, Sleek Grey: #A5A5AF
-
 
  /* logo */
 .skin-blue .main-header .logo {
@@ -64,11 +59,6 @@
                       background-color: #A5A5AF;
                       }
 
-
-
-
-
-
 .main-header .navbar-custom-menu{ 
   float: right;
   width: 90%;
@@ -89,8 +79,6 @@
 .main-header {
   width:100%;
 }
-
-
 
 
 .main-sidebar{ 
@@ -115,7 +103,6 @@ div.busy {
   z-index: 10;
 }
 
-
 .shiny-output-error-valErrorMsgClass{
   color:  red; /*#24a531;*/
   font-size: 15px;
@@ -125,8 +112,6 @@ div.busy {
   color:  #e67e22 ; /* #24a531;*/
   font-size: 15px;
 }
-
-
 
 .box.box-solid.box-primary>.box-header{
   background-image: linear-gradient(to bottom right, #77C9D4, #57BC90) !important;

@@ -20,21 +20,15 @@ mod_bird_features_ui <- function(id){
                  status = "primary", 
                  solidHeader = TRUE,
                  collapsible = TRUE,
-                 
                  fluidRow(
                    column(12,
                           p("Would you like to use the default migration route or upload your own migration pathway?"),
                           
-                          radioGroupButtons(inputId = ns("radGrpInput_spshape_builtin_or_userinput"),
-                                            individual = TRUE,
-                                            justified = TRUE, 
-                                            label = NULL,
+                          selectInput(inputId = ns("selectInput_spshape_builtin_or_userinput"),
+                                            label = "Default migration routes or upload your own line shapefile",
                                             choices = c("Default migration routes" = "existMigration",
-                                                        "Custom migration routes" = "customMigration"),
-                                            checkIcon = list(yes = tags$i(class = "fa fa-circle",
-                                                                          style = "color: steelblue"),
-                                                             no = tags$i(class = "fa fa-circle-o",
-                                                                         style = "color: steelblue"))),
+                                                        "Custom migration routes" = "customMigration")
+                                      ),
                           
                           uiOutput(ns("spShape_upload_shape"))
                    )  

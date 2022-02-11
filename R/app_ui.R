@@ -45,7 +45,6 @@ app_ui <- function(request) {
                                   style = "padding-top: 10px; padding-bottom: 10px", target='_blank', id="lbl_codeLink")),
     tags$li(class = "dropdown", a(icon('bug', "fa-2x"), href='https://github.com/HiDef-Aerial-Surveying/mCRM/issues', #exclamation-circle
                                   style = "padding-top: 10px; padding-bottom: 10px", target='_blank', id="lbl_issuesLink")),
-    
     tags$li(class = "dropdown", actionLink("saveInputs_btt", label = NULL, icon("save", "fa-2x", lib = "font-awesome"),
                                            style = "padding-top: 10px; padding-bottom: 10px")),
     tags$li(class = "dropdown", actionLink("restoreInputs_btt", label = NULL, icon("window-restore", "fa-2x", lib = "font-awesome"),
@@ -61,7 +60,7 @@ app_ui <- function(request) {
     tags$li(class = "dropdown headerimg", a(img(src = "www/DMP_logo_1.png", height = "40px"), href='https://www.dmpstats.com',
                                   style = "padding-top: 5px; padding-bottom: 5px", target='_blank', id="lbl_dmpLogoLink"), 
             style="float: right"),
-    tags$li(class = "dropdown headerimg", a(img(src = "www/MS Logo Linear-01_2.png", height = "30px"), href='https://www.gov.scot/Topics/marine',
+    tags$li(class = "dropdown headerimg", a(img(src = "www/MS Logo Linear-01_2.png", height = "40px"), href='https://www.gov.scot/Topics/marine',
                                   style = "padding-top: 10px; padding-bottom: 10px;", target='_blank', id="lbl_marineScotlandLink"),
             style="float: right")  
   )
@@ -92,11 +91,7 @@ app_ui <- function(request) {
         "Step 4: Simulation & Results", tabName = "tab_simulation", icon = icon("chart-bar")
       ),
       hr(),
-
       bsAlert(anchorId = "alert")
-      
-      #initStore("store", "shinyStore-ex1")
-      
     ),
     fluidRow(
       column(
@@ -109,12 +104,7 @@ app_ui <- function(request) {
           DMP statistics. This application is in BETA and is undergoing testing and approval")
       )
     )
-    
-    
-    
   )  
-  
-  
   
   # Dashboard body ----------------------------------------------------------
   body <- dashboardBody(
@@ -128,16 +118,12 @@ app_ui <- function(request) {
                       solidHeader = TRUE,
                       collapsible = TRUE,
                       column(4,
-                             radioGroupButtons(inputId = "radGrpInput_wfshape_builtin_or_userinput",
-                                               individual = TRUE,
-                                               justified = TRUE, 
-                                               label = NULL,
-                                               choices = c("Existing windfarms" = "existWindFarms",
-                                                           "Custom windfarms" = "customWindFarms"),
-                                               checkIcon = list(yes = tags$i(class = "fa fa-circle",
-                                                                             style = "color: steelblue"),
-                                                                no = tags$i(class = "fa fa-circle-o",
-                                                                            style = "color: steelblue"))),
+                             
+                             selectInput(inputId = "selectInput_wfshape_builtin_or_userinput",
+                                         label = "Existing shapefiles, or upload your own?",
+                                         choices = c("Existing windfarms" = "existWindFarms",
+                                                     "Custom windfarms" = "customWindFarms")),
+
                              selectizeInput("selectInput_builtin_wfList",
                                          label = "Select wind farms (Maximum 5)",
                                          choices = Scotwind_Merged$NAME[order(Scotwind_Merged$NAME)],
@@ -164,8 +150,6 @@ app_ui <- function(request) {
                   )
                 ),
                 
-                
-                
                 fluidRow(
                   column(width=12,
                          box(width=12,
@@ -174,9 +158,6 @@ app_ui <- function(request) {
                                          type="tabs"
                              )
                          )))
-                ### Windfarm parameter modules get inserted here
-                #uiOutput("windfarm_placeholder"),
-
         ),
         tabItem(tabName="tab_birdPars", class="active",
                 fluidRow(
@@ -205,8 +186,7 @@ app_ui <- function(request) {
                            box(width=12,
                                status='primary',
                               tabsetPanel(id="specTabs",
-                                          type="tabs"
-                             )
+                                          type="tabs")
                            )))
                 )
                 ),
@@ -263,13 +243,7 @@ app_ui <- function(request) {
                            rHandsontableOutput("hotInput_output_population_scenarios",width="100%"))
                   )
                 )
-                
-                
-                
-                
                 ),
-        
-        
         tabItem(tabName="tab_simulation", class = "active",
                 fluidRow(
                   column(2,
@@ -285,7 +259,6 @@ app_ui <- function(request) {
                              switchButton(inputId = "chkBoxInput_simulPars_largeArrarCorr",
                                           label = "", 
                                           value = TRUE, col = "GB", type = "OO"),
-                             
                              hr(),
                              sliderInput(inputId = "sldInput_simulPars_numIter", label = "Number of Iterations",
                                          min = 1000, max = 5000, step = 100, value = 1000),
@@ -297,11 +270,7 @@ app_ui <- function(request) {
                          box(title="Download Outputs",width=12,status="primary",solidHeader=TRUE,
                              uiOutput("Simulation_Download")
                              )
-                         
                          ),
-                  
-                  
-                  
                   column(10,
                          box(title = "Pre-Breeding Outputs", width = 12, status = "primary", solidHeader = TRUE,
                              DT::dataTableOutput("summTable_DT_PrB")
@@ -316,12 +285,9 @@ app_ui <- function(request) {
                              DT::dataTableOutput("cumulTable_DT")
                          )
                          )
-
                 )
         )
     ),
-    
-    
     # popup msg for the elements in the header
     shinyBS::bsTooltip(id = "lbl_issuesLink",
                        title = paste0("Submit issues, queries & suggestions. Thanks!"),
@@ -341,16 +307,12 @@ app_ui <- function(request) {
     
   )
   
-  
   shiny::tagList(
     # Leave this function for adding external resources
     golem_add_external_resources(),
-    
     bootstrapPage(
       useShinyjs(),
       #extendShinyjs(text = jsCode,functions=c("getParams")),
-      
-      
       # Add custom CSS & Javascript;
       tagList(tags$head(
         tags$link(rel="stylesheet", type="text/css",href="www/styles.css"),
@@ -358,7 +320,6 @@ app_ui <- function(request) {
         tags$script(type="text/javascript", src = "www/busy.js"),
         tags$style(".swal-modal {width: 30%;}")
       )),
-      
       dashboardPage(header,
                     sidebar,
                     body),
@@ -367,15 +328,7 @@ app_ui <- function(request) {
           tags$b(h4("Working on it...")),
           img(src="www/loading.gif")
       )
-      
-      
     )
-    
-    
-    
-    
-    
-    
   )### top level tagList end
 }
 

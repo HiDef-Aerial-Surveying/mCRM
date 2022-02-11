@@ -32,7 +32,7 @@ mod_WindFarmFeats_ui <- function(id){
         numericInput(width = "85%", 
                      inputId = ns("numInput_windfarmPars_nTurbines"), 
                      label = label.help("Number of Turbines", ns("lbl_windfarmnTurbines")),
-                     value = 1, min = 1, step = 1),#startUpValues$windFarmPars$windfarmPars_nTurbines
+                     value = 1, min = 1, step = 1),
         shinyBS::bsTooltip(id = ns("lbl_windfarmnTurbines"), 
                            title = paste0("Total number of turbines in the wind farm array.", 
                                           " Used in conjunction with turbine model to calculate the target power of the wind farm."),
