@@ -3,5 +3,5 @@
 
 
 <!-- badges: start -->
-<img src='images/logo.png' align="right" height="139" />
+<img src='images/hexSticker.png' align="right" height="139" />
 <!-- badges: end -->
