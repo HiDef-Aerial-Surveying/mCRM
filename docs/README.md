@@ -1,5 +1,3 @@
-
-
 <!-- badges: start -->
 <img src='images/hexSticker.png' align="left" height="139" style="margin-right:20px;" />
 <!-- badges: end -->
