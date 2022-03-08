@@ -187,21 +187,25 @@ mod_WindFarmFeats_server <- function(id, data){
   moduleServer(
     id,
     function(input,output,session){
-      
+    
       observe({
         ## Calculate centroid latitude of wind farm and put in input
-        shp <- Scotwind_Merged[Scotwind_Merged$NAME == nid,]
+        shp <- data$WFshapes[data$WFshapes$NAME == nid,]#Scotwind_Merged[Scotwind_Merged$NAME == nid,]
         latval <- round(mean(shp@bbox[2],shp@bbox[4]),1)
         updateNumericInput(inputId="numInput_windfarmPars_Latitude",value=latval)
       })
       
       observe({
         ## Get the number of turbines and put into the tool
-        updateNumericInput(inputId = "numInput_windfarmPars_nTurbines",value=Scotwind_Merged$N_TURBINES[Scotwind_Merged$NAME == nid])
+        if(data$WF_shape_choice == "existWindFarms"){
+          updateNumericInput(inputId = "numInput_windfarmPars_nTurbines",value=Scotwind_Merged$N_TURBINES[Scotwind_Merged$NAME == nid])    
+        }else if(data$WF_shape_choice == "customWindFarms"){
+          updateNumericInput(inputId = "numInput_windfarmPars_nTurbines",value=100)
+        }
       })
       
       observe({
-        updateNumericInput(inputId = "numInput_windfarmPars_width",value=get_wf_width(Scotwind_Merged[Scotwind_Merged$NAME == nid,]))
+        updateNumericInput(inputId = "numInput_windfarmPars_width",value=get_wf_width(data$WFshapes[data$WFshapes$NAME == nid,]))
       })
       
       
@@ -224,8 +228,6 @@ mod_WindFarmFeats_server <- function(id, data){
       output$plot_turbinePars_monthOps_downtime <- renderPlot({
         
         req(input$hotInput_turbinePars_monthOps)
-        
-        #browser()
         
         hot_to_r(input$hotInput_turbinePars_monthOps) %>% 
           rownames_to_column(var="Variable") %>% 
@@ -275,11 +277,3 @@ mod_WindFarmFeats_server <- function(id, data){
   )
 }
 
-
-    
-## To be copied in the UI
-# mod_WindFarmFeats_ui("WindFarmFeats_ui_1")
-    
-## To be copied in the server
-# callModule(mod_WindFarmFeats_server, "WindFarmFeats_ui_1")
- 

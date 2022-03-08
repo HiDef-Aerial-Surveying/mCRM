@@ -14,6 +14,8 @@
 #' @import stochLAB
 #' @import foreach
 #' @import officedown
+#' @import sp
+#' @import sf
 #' @importFrom readxl excel_sheets
 #' @importFrom readxl read_xlsx
 #' @importFrom tools file_ext
@@ -29,23 +31,13 @@ app_server <- function( input, output, session ) {
   #' ----------------------------------------------------
   
   # --- session's "global" Variables
-  #load("data/startUpValues.rda")
-  
-  prevSlctSpecs <- c()
-  inputs_BiomParsPlotted <-  NULL
-  birdDensPars_plotted <- list(NULL)
-  flgtHghDstInputs_ls_Latest <- list(NULL)
-  storedSlctSpecLabel <- NULL
-  
-  
+
   # --- Initiate session's reactive variables
+  WF_shape_choice <- reactive({input$selectInput_wfshape_builtin_or_userinput})
   rv <- reactiveValues(
+    WFshapes = NULL,
+    WF_shape_choice = NULL,
     WFsSelected = NULL,
-    addedSpec = NULL,
-    biomParsInputs_ls = NULL,
-    birdDensParsInputs_ls = NULL,
-    summaryTables_ls = NULL,
-    sCRM_output_ls = NULL,
     turbinePars_monthOps_df = data.frame(
       matrix(
         c(startUpValues$turbinePars$windAvail, startUpValues$turbinePars$meanDownTime, startUpValues$turbinePars$sdDownTime),
@@ -55,13 +47,7 @@ app_server <- function( input, output, session ) {
       stringsAsFactors = FALSE
     ),
     pitchVsWind_df = startUpValues$turbinePars$pitchVsWind_df,
-    rotationVsWind_df = startUpValues$turbinePars$rotationVsWind_df,
-    startSpecMonthDens_df = map(startUpValues$speciesPars, ~data.frame(meanDensity = .$"meanDensity", sdDensity = .$"sdDensity")),
-    restoringChain =FALSE, restoringChain_2 = FALSE,
-    simCodeTrigger = 0, 
-    birdata_model = data.frame(), monthDensData_model = data.frame(), 
-    monthDensOpt_model = data.frame(), turbineData_model = data.frame(), windfarmData_model = data.frame(),
-    densityDataPresent = NULL, NAsFreeData = NULL, FHD_acceptable = NULL, speciesFieldFilled= NULL
+    rotationVsWind_df = startUpValues$turbinePars$rotationVsWind_df
   )
   
 
@@ -88,10 +74,15 @@ app_server <- function( input, output, session ) {
   
   ## Stores the names of the Wind farms selected from the UI
   WFshapes <- reactive({
-    Scotwind_Merged[Scotwind_Merged$NAME %in% input$selectInput_builtin_wfList,]
+    WF_shape_choice <- WF_shape_choice()
+    if(WF_shape_choice == "existWindFarms"){
+      Scotwind_Merged[Scotwind_Merged$NAME %in% input$selectInput_builtin_wfList,]  
+    }else if(WF_shape_choice == "customWindFarms"){
+      WFshapes_custom()[WFshapes_custom()$NAME %in% input$selectInput_custom_wf_header,]
+    }
   })
   
-  ## Stores a vector of the windfarm shapes which is used to update the shapefiles visble
+  ## Stores a vector of the windfarm shapes which is used to update the shapefiles visible
   ## In the map after the button has been clicked
   WFshapelist <- reactiveValues(wfs=vector())
 
@@ -99,6 +90,8 @@ app_server <- function( input, output, session ) {
   ## As well as update the tab list (appendTab function) and load in the windfarmfeats_ui module
   ## The windfarmfeats server module is also called here
   observeEvent(input$button_update_Windfarm_tabs, {
+    rv$WF_shape_choice <- WF_shape_choice()
+    rv$WFshapes <- WFshapes()
     cur.popup <- paste0("<strong>Name: </strong>", WFshapes()$NAME)
     leaflet::leafletProxy("map",data=WFshapes()) %>% clearShapes() %>%
       addPolygons(weight = 1, fillColor = "red", popup=cur.popup, fillOpacity = 1) 
@@ -935,8 +928,106 @@ app_server <- function( input, output, session ) {
   
   
   
+
+# Controls for uploading windfarm shapefiles ------------------------------
+  
+  observe({
+    WF_shape_choice <- WF_shape_choice()
+    if(WF_shape_choice == "existWindFarms"){
+      output$Windfarm_Shapes <- renderUI({
+        selectizeInput("selectInput_builtin_wfList",
+                       label = "Select wind farms (Maximum 5)",
+                       choices = Scotwind_Merged$NAME[order(Scotwind_Merged$NAME)],
+                       options = list(maxItems = 20L)
+        )      
+      })
+    }else if(WF_shape_choice == "customWindFarms"){
+      output$Windfarm_Shapes <- renderUI({
+        shiny::fileInput("custom_WF_shapes", "Choose polygon shape file (ensure a NAME field exists, select all files)",
+                  multiple = TRUE, accept=c(".shp",".dbf",".sbn",".sbx",".shx",".prj"))
+        })
+    }
+    
+  })
+  
+  ### Some code borrowed from:  https://github.com/richpauloo/shp_oswcr/blob/master/mod_shpPoly.R
+  
+  userShp <- reactive({
+    #(need(input$custom_WF_shapes),message=FALSE)
+    input$custom_WF_shapes
+  })
+  
+  WFshapes_custom <- reactive({
+    req(input$custom_WF_shapes)
+    if(!is.data.frame(userShp())) return()
+    infiles <- userShp()$datapath
+    dirn <- unique(dirname(infiles))
+    outfiles <- file.path(dirn, userShp()$name)
+    purrr::walk2(infiles, outfiles, ~file.rename(.x, .y))
+    shpnm <- outfiles[grep(userShp()$name,pattern=".shp$")]
+    x <- try(raster::shapefile(shpnm))
+    if("NAME" %!in% names(x)){
+      shinyalert::shinyalert(
+        title = "Error",
+        text = "'NAME' column is not available in the shapefile, please ensure unique names are specified in a NAME field",
+        size = "s", 
+        closeOnEsc = TRUE,
+        closeOnClickOutside = FALSE,
+        html = FALSE,
+        type = "error",
+        showConfirmButton = TRUE,
+        showCancelButton = FALSE,
+        confirmButtonText = "OK",
+        confirmButtonCol = "#AEDEF4",
+        timer = 0,
+        imageUrl = "",
+        animation = TRUE
+      )
+    }else{
+      
+      if(is.na(sp::proj4string(x))){
+        valid_proj <- FALSE
+      } else {
+        valid_proj <- TRUE
+      }
+      
+      if(valid_proj){
+        x <- sp::spTransform(x,sf::st_crs(4326)$proj4string)
+        return(x)
+      }else{
+        shinyalert::shinyalert(
+          title = "Error",
+          text = "Shapefile does not have a valid projection",
+          size = "s", 
+          closeOnEsc = TRUE,
+          closeOnClickOutside = FALSE,
+          html = FALSE,
+          type = "error",
+          showConfirmButton = TRUE,
+          showCancelButton = FALSE,
+          confirmButtonText = "OK",
+          confirmButtonCol = "#AEDEF4",
+          timer = 0,
+          imageUrl = "",
+          animation = TRUE
+        )
+      }
+      
+    }
+  })
   
   
+  output$selectInput_custom_Windfarm_name_header <- renderUI({
+      selectizeInput("selectInput_custom_wf_header",
+                     label = "Select wind farms",
+                     choices = WFshapes_custom()$NAME,
+                     options = list(maxItems = 20L)
+      )
+  })
+  
+  
+  
+
   
   # ---------------------------------------------------------
   #  ----       Session's house-cleaning                  ----
@@ -979,7 +1070,7 @@ app_server <- function( input, output, session ) {
   }, priority = 10)
   
   
-  
+  observeEvent(input$test,{browser()})
   
 
 }

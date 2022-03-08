@@ -123,12 +123,12 @@ app_ui <- function(request) {
                                          label = "Existing shapefiles, or upload your own?",
                                          choices = c("Existing windfarms" = "existWindFarms",
                                                      "Custom windfarms" = "customWindFarms")),
-
-                             selectizeInput("selectInput_builtin_wfList",
-                                         label = "Select wind farms (Maximum 5)",
-                                         choices = Scotwind_Merged$NAME[order(Scotwind_Merged$NAME)],
-                                         options = list(maxItems = 20L)
-                             ),
+                
+                             uiOutput("Windfarm_Shapes"),
+                             
+                             uiOutput("selectInput_custom_Windfarm_name_header") %>% withSpinner(color="#0dc5c1"),
+                             
+                             #actionButton("test","test", class="btn-lg btn-success"),
                              
                              p("Click button to update the list of windfarms"),
                              actionButton("button_update_Windfarm_tabs","Update windfarm list", class="btn-lg btn-success"),
