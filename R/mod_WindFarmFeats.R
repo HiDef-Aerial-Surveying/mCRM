@@ -116,7 +116,7 @@ mod_WindFarmFeats_ui <- function(id){
           fluidRow(
             column(6,
                    box(width = 12,
-                       NormNumericInput(paramID = ns("turbinePars_rotnSpeed"), #specID = "",
+                       NormNumericInput(paramID = ns("turbinePars_rotnSpeed"),Button = FALSE,cellWidths="50%",
                                         varName = "Rotation (rpm)",
                                         infoId = ns("lbl_rotSpeedProbDist"),
                                         infoText = paste0("Turbine rotor speed (~ Truncated Normal with lower bound at 0). ", 
@@ -128,7 +128,7 @@ mod_WindFarmFeats_ui <- function(id){
             ),
             column(6,
                    box(width = 12,
-                       NormNumericInput(paramID = ns("turbinePars_bladePitch"), #specID = "",
+                       NormNumericInput(paramID = ns("turbinePars_bladePitch"), Button = FALSE,cellWidths="50%", 
                                         varName = "Pitch (deg)",
                                         infoId = ns("lbl_bladePitchProbDist"),
                                         infoText = paste0("Blade pitch, i.e. the angle of the blade relative to rotor plane (~Truncated Normal with lower bound at 0). ", 
@@ -144,26 +144,17 @@ mod_WindFarmFeats_ui <- function(id){
         fluidRow(
           box(width = 12, 
               
-              tags$b(HTML(paste0("Monthly Operation", actionLink(ns("lbl_monthOPs"), label=NULL, 
+              tags$b(HTML(paste0("Monthly Operation. Double click to edit table, CTRL+Enter when finished", actionLink(ns("lbl_monthOPs"), label=NULL, 
                                                                  icon=icon('info-circle'))))),
               shinyBS::bsTooltip(id = ns("lbl_monthOPs"), 
                                  title = paste0("Information on turbine activity per month: % of wind availability (treated as constant) and % of", 
-                                                " maintenance downtime (~ Normal)"),
+                                                " maintenance downtime (~ Normal)."),
                                  options = list(container = "body"), placement = "right", trigger = "hover"),
               
               br(),
               br(),
               
-              rHandsontableOutput(ns("hotInput_turbinePars_monthOps"), width = "100%"),
-              #tags$style(type="text/css", "#hotInput_turbinePars_monthOps th {font-weight:bold;}"),
-              br(),
-              br(),
-              column(6,
-                     plotOutput(ns("plot_turbinePars_monthOps_windAvb"), width = "100%", height = 250)
-              ),
-              column(6,
-                     plotOutput(ns("plot_turbinePars_monthOps_downtime"), width = "100%", height = 250)
-              )
+              DT::dataTableOutput(ns("hotInput_turbinePars_monthOps")),
           )
         )
         
@@ -208,56 +199,48 @@ mod_WindFarmFeats_server <- function(id, data){
         updateNumericInput(inputId = "numInput_windfarmPars_width",value=get_wf_width(data$WFshapes[data$WFshapes$NAME == nid,]))
       })
       
-      
       # --- Create input table for turbine monthly operation parameters
-      output$hotInput_turbinePars_monthOps <- renderRHandsontable({
-        
-        data$turbinePars_monthOps_df %>%
-          rhandsontable(rowHeaderWidth = 140) %>%
-          hot_cols(colWidths = 85, 
-                   renderer = "function (instance, td, row, col, prop, value, cellProperties) {
-           Handsontable.renderers.NumericRenderer.apply(this, arguments);
-               if (value == null || value.length === 0) {
-               td.style.background = 'pink';
-               }}") %>%
-          hot_table(highlightCol = TRUE, highlightRow = TRUE) %>%
-          hot_context_menu(allowRowEdit = FALSE, allowColEdit = FALSE)
+      output$hotInput_turbinePars_monthOps <- renderDT({
+        datatable(data$turbinePars_monthOps_df,
+                  editable='all',
+                  options=list(dom='t',scrollX = TRUE))
       })
       
-      # -- Turbine Monthly Operations - Downtime
-      output$plot_turbinePars_monthOps_downtime <- renderPlot({
-        
-        req(input$hotInput_turbinePars_monthOps)
-        
-        hot_to_r(input$hotInput_turbinePars_monthOps) %>% 
-          rownames_to_column(var="Variable") %>% 
-          slice(2:3) %>%
-          gather(month, windAvb, -Variable) %>%
-          mutate(month = factor(month, levels=unique(month), labels = month.abb)) %>%
-          spread(Variable, windAvb) %>%
-          dplyr::rename(meanDwnTm = `Mean Downtime (%)`, sdDwnTm = `SD Downtime (%)`) %>%
-          mutate(lwBound = qnorm(p=0.025, mean = meanDwnTm, sd = sdDwnTm),
-                 upBound = qnorm(p=c(0.975), mean = meanDwnTm, sd = sdDwnTm)) %>%
-          ggplot(aes(x=month, y = meanDwnTm, group=month)) +
-          geom_pointrange(aes(ymin=lwBound, ymax=upBound), col = "olivedrab", size =0.8) +
-          labs(y = "Downtime (%)", x = "", title = "Monthly turbine downtime (Means & 95% CIs)")
-      })  
       
-      
-      
-      output$plot_turbinePars_monthOps_windAvb <- renderPlot({
-        
-        req(input$hotInput_turbinePars_monthOps)
-        
-        hot_to_r(input$hotInput_turbinePars_monthOps) %>% rownames_to_column(var="Variable") %>% slice(1) %>%
-          gather(month, windAvb, -Variable) %>% select(-Variable) %>%
-          mutate(month = factor(month.abb, levels = month.abb)) %>%
-          ggplot(aes(x=month, y=windAvb)) +
-          geom_col(fill= "olivedrab", alpha = 0.7, width = 0.4) +
-          labs(x="", y = "Wind Availability (%)", title = "Monthly wind availability")
-        
-      })
-      
+      # # -- Turbine Monthly Operations - Downtime
+      # output$plot_turbinePars_monthOps_downtime <- renderPlot({
+      # 
+      #   req(input$hotInput_turbinePars_monthOps)
+      # 
+      #   hot_to_r(input$hotInput_turbinePars_monthOps) %>%
+      #     rownames_to_column(var="Variable") %>%
+      #     slice(2:3) %>%
+      #     gather(month, windAvb, -Variable) %>%
+      #     mutate(month = factor(month, levels=unique(month), labels = month.abb)) %>%
+      #     spread(Variable, windAvb) %>%
+      #     dplyr::rename(meanDwnTm = `Mean Downtime (%)`, sdDwnTm = `SD Downtime (%)`) %>%
+      #     mutate(lwBound = qnorm(p=0.025, mean = meanDwnTm, sd = sdDwnTm),
+      #            upBound = qnorm(p=c(0.975), mean = meanDwnTm, sd = sdDwnTm)) %>%
+      #     ggplot(aes(x=month, y = meanDwnTm, group=month)) +
+      #     geom_pointrange(aes(ymin=lwBound, ymax=upBound), col = "olivedrab", size =0.8) +
+      #     labs(y = "Downtime (%)", x = "", title = "Monthly turbine downtime (Means & 95% CIs)")
+      # })
+      # 
+      # 
+      # 
+      # output$plot_turbinePars_monthOps_windAvb <- renderPlot({
+      # 
+      #   req(input$hotInput_turbinePars_monthOps)
+      # 
+      #   hot_to_r(input$hotInput_turbinePars_monthOps) %>% rownames_to_column(var="Variable") %>% slice(1) %>%
+      #     gather(month, windAvb, -Variable) %>% select(-Variable) %>%
+      #     mutate(month = factor(month.abb, levels = month.abb)) %>%
+      #     ggplot(aes(x=month, y=windAvb)) +
+      #     geom_col(fill= "olivedrab", alpha = 0.7, width = 0.4) +
+      #     labs(x="", y = "Wind Availability (%)", title = "Monthly wind availability")
+      # 
+      # })
+      # 
       
       #turbineData_Operation <- hot_to_r(input$hotInput_turbinePars_monthOps) %>%  
         #rownames_to_column(var="Variable") %>%
@@ -271,7 +254,6 @@ mod_WindFarmFeats_server <- function(id, data){
         #) %>%
         #select(-Variable) %>%
         #spread(VariableMasden, Value)
-      
       
     }
   )

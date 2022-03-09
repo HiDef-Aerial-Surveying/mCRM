@@ -20,6 +20,7 @@
 #' @importFrom readxl read_xlsx
 #' @importFrom tools file_ext
 #' @importFrom DT renderDataTable
+#' @importFrom DT datatable
 #' @noRd
 #' 
 #' 
@@ -212,21 +213,29 @@ app_server <- function( input, output, session ) {
            function(x){
              x <- stringr::str_replace_all(x," ","_")
              tt <- data.frame(
-               Latitude = eval(parse(text=paste0("input$`",x,"-numInput_windfarmPars_Latitude`"))),
+               Latitude =  input[[paste0(x,"-numInput_windfarmPars_Latitude")]], 
                wfWidth = eval(parse(text=paste0("input$`",x,"-numInput_windfarmPars_width`"))),
                PropUpwind = eval(parse(text=paste0("input$`",x,"-numInput_windfarmPars_upWindDownWindProp`"))),
                nTurbines = eval(parse(text=paste0("input$`",x,"-numInput_windfarmPars_nTurbines`"))),
                nBlades = eval(parse(text=paste0("input$`",x,"-numInput_turbinePars_numBlades`"))),
                rRadius = eval(parse(text=paste0("input$`",x,"-numInput_turbinePars_rotRadius`"))),
                bWidth = eval(parse(text=paste0("input$`",x,"-numInput_turbinePars_maxBladeWdth`"))),
-               RotnSpdE <- eval(parse(text=paste0("input$`",x,"-turbinePars_rotnSpeed_E_numInput`"))),
-               RotnSpdSD <- eval(parse(text=paste0("input$`",x,"-turbinePars_rotnSpeed_SD_numInput`"))),
-               BldPitchE <- eval(parse(text=paste0("input$`",x,"-turbinePars_bladePitch_E_numInput`"))),
-               BldPitchSD <- eval(parse(text=paste0("input$`",x,"-turbinePars_bladePitch_SD_numInput`")))
+               RotnSpdE = eval(parse(text=paste0("input$`",x,"-turbinePars_rotnSpeed_E_numInput`"))),
+               RotnSpdSD = eval(parse(text=paste0("input$`",x,"-turbinePars_rotnSpeed_SD_numInput`"))),
+               BldPitchE = eval(parse(text=paste0("input$`",x,"-turbinePars_bladePitch_E_numInput`"))),
+               BldPitchSD = eval(parse(text=paste0("input$`",x,"-turbinePars_bladePitch_SD_numInput`")))
              )
-             winddatatable <- eval(parse(text=paste0(
-               "rhandsontable::hot_to_r(input$`",x,"-hotInput_turbinePars_monthOps`)"
-             )))
+             #winddatatable <- eval(parse(text=paste0(
+             #   "rhandsontable::hot_to_r(input$`",x,"-hotInput_turbinePars_monthOps`)"
+             #)))
+             if(length(input[[paste0(x,"-hotInput_turbinePars_monthOps_cell_clicked")]]) > 0){
+               winddatatable <- DT::editData(rv$turbinePars_monthOps_df,
+                            input[[paste0(x,"-hotInput_turbinePars_monthOps_cell_edit")]],
+                            paste0(x,"-hotInput_turbinePars_monthOps")
+               )
+             }else{
+               winddatatable <- rv$turbinePars_monthOps_df  
+             }
              meanWA <- winddatatable[1,]
              meanDT <- winddatatable[2,]
              names(meanDT) <- paste0(month.abb," mean down time")
@@ -238,7 +247,11 @@ app_server <- function( input, output, session ) {
   })
 
 
+# Observe if the wind turbine parameters have been edited -----------------
+
+
   observeEvent(input$button_generate_scenarios  ,{
+    
     BirdTest <- tryCatch(bird.data.rvs()[[1]],
                          error=function(e) NULL)
     if(!is.null(BirdTest)){
@@ -335,7 +348,7 @@ app_server <- function( input, output, session ) {
       return(xx)
     }
     
-    #browser()
+  
     output$hotInput_output_wf_scenarios <- renderRHandsontable(
       wind_scenario_table %>%
         rhandsontable(selectCallback = TRUE,rowHeaders=NULL, colHeaders = c("Wind farm","Latitude","Width","Proportion upwind flight",
@@ -853,19 +866,58 @@ app_server <- function( input, output, session ) {
       mcrmOut$mCRM_output_ls[['Otherout']] <- Otherout
       mcrmOut$mCRM_output_ls[['cumulTab']] <- cumulTab
       
+      
+      output$summTables <- renderUI({
+        
+        lapply(names(mcrmOut$mCRM_output_ls[['PreBreedout']])[c(2:ncol(mcrmOut$mCRM_output_ls[['PreBreedout']]))],
+               function(x){
+                 titlenm <- paste0(x," Outputs")
+                 summtab <- stringr::str_replace_all(x,pattern=" ",replacement="_")
+                 dtName <- paste0("summTable_",summtab)
+                 box(title = titlenm, width = 12, status = "primary", solidHeader = TRUE,
+                     DT::dataTableOutput(dtName)
+                 )
+               })
+        box(title = "Cumulative Outputs", width = 12, status = "primary", solidHeader = TRUE,
+            DT::dataTableOutput("summTable_cumulative")
+        )
 
-      output$summTable_DT_PrB<- DT::renderDataTable({
-        datatable(PreBreedout,rownames=FALSE)
       })
-      output$summTable_DT_PoB<- DT::renderDataTable({
-        datatable(PostBreedout,rownames=FALSE)
+      
+      lapply(names(mcrmOut$mCRM_output_ls[['PreBreedout']])[c(2:ncol(mcrmOut$mCRM_output_ls[['PreBreedout']]))],
+             function(x){
+               summtab <- stringr::str_replace_all(x,pattern=" ",replacement="_")
+               dtName <- paste0("summTable_",summtab)
+               PreB <- mcrmOut$mCRM_output_ls[['PreBreedout']] %>% dplyr::select(Species,contains(x))
+               PosB <- mcrmOut$mCRM_output_ls[['PostBreedout']] %>% dplyr::select(Species,contains(x))
+               OthM <- mcrmOut$mCRM_output_ls[['Otherout']] %>% dplyr::select(Species,contains(x))
+               Final <- tibble(Species = PreB$Species,
+                               "Pre-Breeding" = PreB[,2],
+                               "Post-Breeding" = PosB[,2],
+                               "Other migration" = OthM[,2]
+               )
+               
+               output[[dtName]]<- DT::renderDataTable({
+                    datatable(Final,rownames=FALSE, extensions="Buttons",options=list(buttons = c('copy', 'csv', 'excel', 'pdf', 'print')))
+                 })
+             })
+      output$summTable_cumulative <- DT::renderDataTable({
+        datatable(cumulTab,rownames=FALSE,extensions="Buttons",options=list(buttons = c('copy', 'csv', 'excel', 'pdf', 'print')))
       })
-      output$summTable_DT_O<- DT::renderDataTable({
-        datatable(Otherout,rownames=FALSE)
-      })
-      output$cumulTable_DT<- DT::renderDataTable({
-        datatable(cumulTab,rownames=FALSE)
-      })
+      
+      
+      # output$summTable_DT_PrB<- DT::renderDataTable({
+      #   datatable(PreBreedout,rownames=FALSE)
+      # })
+      # output$summTable_DT_PoB<- DT::renderDataTable({
+      #   datatable(PostBreedout,rownames=FALSE)
+      # })
+      # output$summTable_DT_O<- DT::renderDataTable({
+      #   datatable(Otherout,rownames=FALSE)
+      # })
+      # output$cumulTable_DT<- DT::renderDataTable({
+      #   datatable(cumulTab,rownames=FALSE)
+      # })
       
       
       output$Simulation_Download <- renderUI({

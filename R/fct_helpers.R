@@ -29,7 +29,9 @@ NormNumericInput <- function(paramID,  varName, infoId="foo", infoText ="", #spe
                    label = paste0("SD of ", varName),
                    min = SD_min, max = SD_max, step = SD_step,
                    value = SD_value, width = '90%'),
+      
       if(Button==TRUE){
+        
         actionButton(inputId = paramID,
                      label = "View plot", width = '90%')  
       }

@@ -272,18 +272,7 @@ app_ui <- function(request) {
                              )
                          ),
                   column(10,
-                         box(title = "Pre-Breeding Outputs", width = 12, status = "primary", solidHeader = TRUE,
-                             DT::dataTableOutput("summTable_DT_PrB")
-                         ),
-                         box(title = "Post-Breeding Outputs", width = 12, status = "primary", solidHeader = TRUE,
-                             DT::dataTableOutput("summTable_DT_PoB")
-                         ),
-                         box(title = "Other migration Outputs", width = 12, status = "primary", solidHeader = TRUE,
-                             DT::dataTableOutput("summTable_DT_O")
-                         ),
-                         box(title = "Culmulative Outputs", width = 12, status = "primary", solidHeader = TRUE,
-                             DT::dataTableOutput("cumulTable_DT")
-                         )
+                         uiOutput("summTables")
                          )
                 )
         )
