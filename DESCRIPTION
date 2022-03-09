@@ -39,7 +39,7 @@ Imports:
     leaflet,
     shinycssloaders,
     foreach,
-    stochLAB (>= 0.3.0),
+    stochLAB (>= 1.0.0),
     geosphere,
     hrbrthemes,
     sf,

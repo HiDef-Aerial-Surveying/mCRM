@@ -1122,7 +1122,7 @@ app_server <- function( input, output, session ) {
   }, priority = 10)
   
   
-  observeEvent(input$test,{browser()})
+  #observeEvent(input$test,{browser()})
   
 
 }
