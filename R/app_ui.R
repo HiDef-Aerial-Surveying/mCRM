@@ -171,7 +171,7 @@ app_ui <- function(request) {
                            selectizeInput("selectInput_builtin_speciesList",
                                           label = "Select species (scientific names instead?)",
                                           choices = defaultSpeciesValues$Common_name,
-                                          options = list(maxItems = 20L)
+                                          options = list(maxItems = 70L)
                            ),
                            br(),
                            p("Click to update the species based on the above selection. If you remove a species, you'll have to re-enter the data"),
@@ -272,7 +272,11 @@ app_ui <- function(request) {
                              )
                          ),
                   column(10,
-                         uiOutput("summTables")
+                         uiOutput("summTables"),
+                         
+                         box(title = "Cumulative Outputs", width = 12, status = "primary", solidHeader = TRUE,
+                             DT::dataTableOutput("summTable_cumulative")
+                         )
                          )
                 )
         )

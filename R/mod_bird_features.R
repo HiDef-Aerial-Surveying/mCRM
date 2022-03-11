@@ -10,8 +10,8 @@
 mod_bird_features_ui <- function(id){
   ns <- NS(id)
   
-  specStartVals <- defaultSpeciesValues[stringr::str_replace_all(defaultSpeciesValues$Scientific_name," ","_") == id,]
-  
+  specStartVals <- defaultSpeciesValues[defaultSpeciesValues$Sp_code == id,]
+
   tagList(
     fluidRow(
       column(width=12,
@@ -43,18 +43,18 @@ mod_bird_features_ui <- function(id){
                    column(4,
                           switchButton(inputId = ns("switch_pre_breeding_migration"),
                                        label = "Pre-breeding migration", 
-                                       value = FALSE, col = "GB", type = "OO"),
+                                       value = TRUE, col = "GB", type = "OO"),
                           uiOutput(ns('pre_breed_dates'))
                    ),
                    column(4,
                           switchButton(inputId = ns("switch_post_breeding_migration"),
                                        label = "Post-breeding migration", 
-                                       value = FALSE, col = "GB", type = "OO"),
+                                       value = TRUE, col = "GB", type = "OO"),
                           uiOutput(ns('post_breed_dates'))),
                    column(4,
                           switchButton(inputId = ns("switch_other_migration"),
                                        label = "Other migration", 
-                                       value = FALSE, col = "GB", type = "OO"),
+                                       value = TRUE, col = "GB", type = "OO"),
                           uiOutput(ns('other_dates')))
                  )
                  
@@ -188,7 +188,7 @@ mod_bird_features_server <- function(id,data){
       observeEvent(input$switch_pre_breeding_migration,{
         output$pre_breed_dates <- renderUI({p("")})
         if(input$switch_pre_breeding_migration == TRUE){
-          migp <- defaultSpeciesValues$Pre_breed_mig_months[stringr::str_replace_all(defaultSpeciesValues$Scientific_name," ","_") == id]
+          migp <- defaultSpeciesValues$Pre_breed_mig_months[defaultSpeciesValues$Sp_code == id]
           output$pre_breed_dates <- renderUI({
             p(migp)
           })
@@ -198,7 +198,7 @@ mod_bird_features_server <- function(id,data){
       })
       observeEvent(input$switch_post_breeding_migration,{
         output$post_breed_dates <- renderUI({p("")})
-        migp <- defaultSpeciesValues$Post_breed_mig_months[stringr::str_replace_all(defaultSpeciesValues$Scientific_name," ","_") == id]
+        migp <- defaultSpeciesValues$Post_breed_mig_months[defaultSpeciesValues$Sp_code == id]
         if(input$switch_post_breeding_migration == TRUE){
           output$post_breed_dates <- renderUI({
             p(migp)
@@ -209,7 +209,7 @@ mod_bird_features_server <- function(id,data){
       })
       observeEvent(input$switch_other_migration,{
         output$other_dates <- renderUI({p("")})
-        migp <- defaultSpeciesValues$Other_mig_months[stringr::str_replace_all(defaultSpeciesValues$Scientific_name," ","_") == id]
+        migp <- defaultSpeciesValues$Other_mig_months[defaultSpeciesValues$Sp_code == id]
         if(input$switch_other_migration){
           output$other_dates <- renderUI({
             p(migp)
@@ -234,7 +234,7 @@ mod_bird_features_server <- function(id,data){
       
       # Gets the migratory pathway polygon for the species
       SpPoly <- reactive({
-        sppc <- defaultSpeciesValues$Sp_code[stringr::str_replace_all(defaultSpeciesValues$Scientific_name," ","_") == id]
+        sppc <- defaultSpeciesValues$Sp_code[defaultSpeciesValues$Sp_code == id]
         SpPoly <- all_polygons[[sppc]]
         SpPoly <- sf::st_transform(SpPoly,4326)
       })

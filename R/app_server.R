@@ -26,6 +26,18 @@
 #' 
 app_server <- function( input, output, session ) {
 
+  withConsoleRedirect <- function(containerId, expr) {
+    # Change type="output" to type="message" to catch stderr
+    # (messages, warnings, and errors) instead of stdout.
+    txt <- capture.output(results <- expr, type = "message")
+    if (length(txt) > 0) {
+      insertUI(paste0("#", containerId), where = "beforeEnd",
+               ui = paste0(txt, "\n", collapse = "")
+      )
+    }
+    results
+  }
+  
 
   #' ----------------------------------------------------
   #  ----         setting session specifics          ----
@@ -138,8 +150,8 @@ app_server <- function( input, output, session ) {
     if(length(birdspecieslist$birdspcs) == 0){
       lapply(BirdNames(),function(x) {
         
-        id_name <- defaultSpeciesValues$Scientific_name[which(defaultSpeciesValues$Common_name == x)] 
-        id_name <- stringr::str_replace_all(id_name," ","_")
+        id_name <- defaultSpeciesValues$Sp_code[which(defaultSpeciesValues$Common_name == x)] 
+        #id_name <- stringr::str_replace_all(id_name," ","_")
         
         appendTab("specTabs",tabPanel(x,mod_bird_features_ui(id_name)))
         mod_bird_features_server(id_name,WFshapes())
@@ -154,8 +166,8 @@ app_server <- function( input, output, session ) {
       }
       for(i in BirdNames()){
         if(i %!in% birdspecieslist$birdspcs){
-          id_name <- defaultSpeciesValues$Scientific_name[which(defaultSpeciesValues$Common_name == i)] 
-          id_name <- stringr::str_replace_all(id_name," ","_")
+          id_name <- defaultSpeciesValues$Sp_code[which(defaultSpeciesValues$Common_name == i)] 
+          #id_name <- stringr::str_replace_all(id_name," ","_")
           
           appendTab("specTabs",tabPanel(i,mod_bird_features_ui(id_name)))
           mod_bird_features_server(id_name,WFshapes())
@@ -184,8 +196,8 @@ app_server <- function( input, output, session ) {
   bird.data.rvs <- reactive({
     sapply(BirdNames(),
            function(x){
-             id_name <- defaultSpeciesValues$Scientific_name[which(defaultSpeciesValues$Common_name == x)]
-             id_name <- stringr::str_replace_all(id_name," ","_")
+             id_name <- defaultSpeciesValues$Sp_code[which(defaultSpeciesValues$Common_name == x)]
+             #id_name <- stringr::str_replace_all(id_name," ","_")
              data.frame(
                flying = eval(parse(text=paste0("input$`",id_name,"-slctInput_biomPars_flType_tp`"))),
                bdlenE = eval(parse(text=paste0("input$`",id_name,"-biomPars_bodyLt_E_numInput`"))),
@@ -704,6 +716,8 @@ app_server <- function( input, output, session ) {
   
   observeEvent(input$actButtonInput_simulPars_GO,{
     
+    #input$actButtonInput_simulPars_GO
+      
     BirdDat <- tryCatch(BirdsData(),
                         error=function(e) NULL)
     TurbineDat <- tryCatch(WindFarmsData(),
@@ -734,6 +748,9 @@ app_server <- function( input, output, session ) {
         animation = TRUE
       )
     }else{
+      
+      #output$cons <- renderUI({
+      
       names(BirdDat) <- str_replace_all(names(BirdDat)," ","")
       names(TurbineDat) <- str_replace_all(names(TurbineDat)," ","")
       names(CountDat) <- str_replace_all(names(CountDat)," ","")
@@ -788,154 +805,146 @@ app_server <- function( input, output, session ) {
           dwntm <- DTmn %>% left_join(DTsd,by="variable")
           names(dwntm) <- c("month","mean","sd")
           
-        
-          outs <- mig_stoch_crm(
-            wing_span_pars = data.frame(mean = BirdData$Wingspan, sd = BirdData$WingspanSD),      # Wing span in m,
-            flt_speed_pars = data.frame(mean = BirdData$FlightSpeed, sd = BirdData$FlightSpeedSD),       # Flight speed in m/s
-            body_lt_pars = data.frame(mean = BirdData$BodyLength, sd = BirdData$BodyLengthSD),       # Body length in m,
-            prop_crh_pars = data.frame(mean = BirdData$PCH, sd = 0),                              # Proportion of birds at CRH
-            avoid_bsc_pars = data.frame(mean = BirdData$Avoidance, sd = BirdData$AvoidanceSD),     # avoidance rate
-            n_turbines = TurbineData$Numberofturbines,
-            n_blades = TurbineData$Numberofblades,
-            rtn_speed_pars = data.frame(mean = TurbineData$RotationSpeed, sd = TurbineData$RotationSpeedSD),         # rotation speed in m/s of turbine blades
-            bld_pitch_pars = data.frame(mean = TurbineData$BladePitch, sd = TurbineData$BladePitchSD),          # pitch in degrees of turbine blades
-            rtr_radius_pars = data.frame(mean = TurbineData$Rotorradius, sd = 0),          # sd = 0, rotor radius is fixed
-            bld_width_pars = data.frame(mean = TurbineData$Bladewidth, sd = 0),            # sd = 0, blade width is fixed
-            wf_width = TurbineData$Width,
-            wf_latitude = TurbineData$Latitude,
-            prop_upwind = TurbineData$Proportionupwindflight/100,
-            flight_type = tolower(BirdData$Flight),
-            popn_estim_pars = data.frame(mean = CountData$Populationestimate, sd = CountData$`Populationestimate(SD)`),    # population flying through windfarm,
-            season_specs = season_specs,
-            chord_profile = stochLAB::chord_prof_5MW,
-            trb_wind_avbl = windavb,
-            trb_downtime_pars = dwntm,
-            n_iter = input$sldInput_simulPars_numIter,
-            LargeArrayCorrection = TRUE,
-            log_file = NULL,
-            seed = 1234,
-            verbose = FALSE)
-          
-          ## Send outputs to reactive Values list so they can be accessed
-          mcrmOut$mCRM_boots_ls[[wf_name]][[spp_name]] <- outs
-          ## Send outputs to matrix
-          outputs[i,1] <- spp_name
-          outputs[i,2] <- wf_name
-          outputs[i,3] <- paste(round(mean(outs[,1],na.rm=T),3), "\u00B1", round(sd(outs[,1],na.rm=T),3))
-          outputs[i,4] <- paste(round(mean(outs[,2],na.rm=T),3), "\u00B1", round(sd(outs[,2],na.rm=T),3))
-          outputs[i,5] <- paste(round(mean(outs[,3],na.rm=T),3), "\u00B1", round(sd(outs[,3],na.rm=T),3))
-          ## Set raw values to matrix as well so they can be used for cumulative assessments
-          outputs[i,6] <- round(mean(outs[,1],na.rm=T),3)
-          outputs[i,7] <- round(sd(outs[,1],na.rm=T),3)  
-          outputs[i,8] <- round(mean(outs[,2],na.rm=T),3) 
-          outputs[i,9] <- round(sd(outs[,2],na.rm=T),3) 
-          outputs[i,10] <- round(mean(outs[,3],na.rm=T),3)
-          outputs[i,11] <- round(sd(outs[,3],na.rm=T),3)
+          ### Make use of built in error handling in the stochLAB package
+          ### Will output console errors as a notification
+            tryCatch({
+              outs <- mig_stoch_crm(
+                wing_span_pars = data.frame(mean = BirdData$Wingspan, sd = BirdData$WingspanSD),      # Wing span in m,
+                flt_speed_pars = data.frame(mean = BirdData$FlightSpeed, sd = BirdData$FlightSpeedSD),       # Flight speed in m/s
+                body_lt_pars = data.frame(mean = BirdData$BodyLength, sd = BirdData$BodyLengthSD),       # Body length in m,
+                prop_crh_pars = data.frame(mean = BirdData$PCH, sd = 0),                              # Proportion of birds at CRH
+                avoid_bsc_pars = data.frame(mean = BirdData$Avoidance, sd = BirdData$AvoidanceSD),     # avoidance rate
+                n_turbines = TurbineData$Numberofturbines,
+                n_blades = TurbineData$Numberofblades,
+                rtn_speed_pars = data.frame(mean = TurbineData$RotationSpeed, sd = TurbineData$RotationSpeedSD),         # rotation speed in m/s of turbine blades
+                bld_pitch_pars = data.frame(mean = TurbineData$BladePitch, sd = TurbineData$BladePitchSD),          # pitch in degrees of turbine blades
+                rtr_radius_pars = data.frame(mean = TurbineData$Rotorradius, sd = 0),          # sd = 0, rotor radius is fixed
+                bld_width_pars = data.frame(mean = TurbineData$Bladewidth, sd = 0),            # sd = 0, blade width is fixed
+                wf_width = TurbineData$Width,
+                wf_latitude = TurbineData$Latitude,
+                prop_upwind = TurbineData$Proportionupwindflight/100,
+                flight_type = tolower(BirdData$Flight),
+                popn_estim_pars = data.frame(mean = CountData$Populationestimate, sd = CountData$`Populationestimate(SD)`),    # population flying through windfarm,
+                season_specs = season_specs,
+                chord_profile = stochLAB::chord_prof_5MW,
+                trb_wind_avbl = windavb,
+                trb_downtime_pars = dwntm,
+                n_iter = input$sldInput_simulPars_numIter,
+                LargeArrayCorrection = TRUE,
+                log_file = NULL,
+                seed = 1234,
+                verbose = FALSE)
+              
+              ## Send outputs to reactive Values list so they can be accessed
+              mcrmOut$mCRM_boots_ls[[wf_name]][[spp_name]] <- outs
+              ## Send outputs to matrix
+              outputs[i,1] <- spp_name
+              outputs[i,2] <- wf_name
+              outputs[i,3] <- paste(round(mean(outs[,1],na.rm=T),3), "\u00B1", round(sd(outs[,1],na.rm=T),3))
+              outputs[i,4] <- paste(round(mean(outs[,2],na.rm=T),3), "\u00B1", round(sd(outs[,2],na.rm=T),3))
+              outputs[i,5] <- paste(round(mean(outs[,3],na.rm=T),3), "\u00B1", round(sd(outs[,3],na.rm=T),3))
+              ## Set raw values to matrix as well so they can be used for cumulative assessments
+              outputs[i,6] <- round(mean(outs[,1],na.rm=T),3)
+              outputs[i,7] <- round(sd(outs[,1],na.rm=T),3)  
+              outputs[i,8] <- round(mean(outs[,2],na.rm=T),3) 
+              outputs[i,9] <- round(sd(outs[,2],na.rm=T),3) 
+              outputs[i,10] <- round(mean(outs[,3],na.rm=T),3)
+              outputs[i,11] <- round(sd(outs[,3],na.rm=T),3)
+              
+            },
+            warning = function(warn){
+              mess <- paste0("error in scenario ",spp_name," x ",wf_name,": ",warn$message)
+              showNotification(mess,type='warning',duration = NULL)
+            },
+            error = function(err){
+              mess <- paste0("error in scenario ",spp_name," x ",wf_name, ": ",err$message)
+              showNotification(mess,type='err',duration = NULL)
+            }
+            )
         }
       })
-      
-      outputs <- data.frame(outputs)
-      names(outputs)[1:5] <- c('Species',"windfarm","PrBMigration","PoBMigration","OMigration")
-      
-      PreBreedout <- reshape2::dcast(outputs[,c(1:3)],formula = Species ~windfarm)
-      PostBreedout <- reshape2::dcast(outputs[,c(1,2,4)],formula = Species ~windfarm)
-      Otherout <- reshape2::dcast(outputs[,c(1,2,5)],formula = Species ~windfarm)
-      
-      ## Create summary table
-      cumulTab <- outputs %>%
-        group_by(Species) %>%
-        dplyr::summarise(PrBsum = sum(as.numeric(X6),na.rm=TRUE),
-                         PrBsd = sum.stdevs(as.numeric(X7)),
-                         PoBsum = sum(as.numeric(X8),na.rm=TRUE),
-                         PoBsd = sum.stdevs(as.numeric(X9)),
-                         Osum = sum(as.numeric(X10),na.rm=TRUE),
-                         Osd = sum.stdevs(as.numeric(X11))) %>%
-        dplyr::rowwise() %>%
-        dplyr::mutate(
-          'Pre-breeding total' = paste(PrBsum, "\u00B1", round(PrBsd,3)),
-          'Post-breeding total' = paste(PoBsum, "\u00B1", round(PoBsd,3)),
-          'Other total' = paste(Osum, "\u00B1", round(Osd,3)),
-          'Total' = paste(sum(dplyr::c_across(c(PrBsum,PoBsum,Osum))),"\u00B1",
-                          round(sum.stdevs(dplyr::c_across(c(PrBsd,PoBsd,Osd))),3))
-        ) %>%
-        dplyr::select(-PrBsum,-PrBsd,-PoBsum,-PoBsd,-Osum,-Osd)
-      
-      
-      mcrmOut$mCRM_output_ls[['PreBreedout']] <- PreBreedout
-      mcrmOut$mCRM_output_ls[['PostBreedout']] <- PostBreedout
-      mcrmOut$mCRM_output_ls[['Otherout']] <- Otherout
-      mcrmOut$mCRM_output_ls[['cumulTab']] <- cumulTab
-      
-      
-      output$summTables <- renderUI({
+      try({
+        outputs <- data.frame(outputs)
+        names(outputs)[1:5] <- c('Species',"windfarm","PrBMigration","PoBMigration","OMigration")
         
-        lapply(names(mcrmOut$mCRM_output_ls[['PreBreedout']])[c(2:ncol(mcrmOut$mCRM_output_ls[['PreBreedout']]))],
+        PreBreedout <- reshape2::dcast(outputs[,c(1:3)],formula = Species ~windfarm)
+        PostBreedout <- reshape2::dcast(outputs[,c(1,2,4)],formula = Species ~windfarm)
+        Otherout <- reshape2::dcast(outputs[,c(1,2,5)],formula = Species ~windfarm)
+        
+        ## Create summary table
+        cumulTab <- outputs %>%
+          group_by(Species) %>%
+          dplyr::summarise(PrBsum = sum(as.numeric(X6),na.rm=TRUE),
+                           PrBsd = sum.stdevs(as.numeric(X7)),
+                           PoBsum = sum(as.numeric(X8),na.rm=TRUE),
+                           PoBsd = sum.stdevs(as.numeric(X9)),
+                           Osum = sum(as.numeric(X10),na.rm=TRUE),
+                           Osd = sum.stdevs(as.numeric(X11))) %>%
+          dplyr::rowwise() %>%
+          dplyr::mutate(
+            'Pre-breeding total' = paste(PrBsum, "\u00B1", round(PrBsd,3)),
+            'Post-breeding total' = paste(PoBsum, "\u00B1", round(PoBsd,3)),
+            'Other total' = paste(Osum, "\u00B1", round(Osd,3)),
+            'Total' = paste(sum(dplyr::c_across(c(PrBsum,PoBsum,Osum))),"\u00B1",
+                            round(sum.stdevs(dplyr::c_across(c(PrBsd,PoBsd,Osd))),3))
+          ) %>%
+          dplyr::select(-PrBsum,-PrBsd,-PoBsum,-PoBsd,-Osum,-Osd)
+        
+        
+        mcrmOut$mCRM_output_ls[['PreBreedout']] <- PreBreedout
+        mcrmOut$mCRM_output_ls[['PostBreedout']] <- PostBreedout
+        mcrmOut$mCRM_output_ls[['Otherout']] <- Otherout
+        mcrmOut$mCRM_output_ls[['cumulTab']] <- cumulTab
+        
+        ### Renders the UI for the results 
+        output$summTables <- renderUI({
+          lapply(WFshapelist$wfs,
+                 function(x){
+                   titlenm <- paste0(x," Outputs")
+                   summtab <- stringr::str_replace_all(x,pattern=" ",replacement="_")
+                   dtName <- paste0("summTable_",summtab)
+                   box(title = titlenm, width = 12, status = "primary", solidHeader = TRUE,
+                       DT::dataTableOutput(dtName)
+                   )
+                 })
+        })
+        ### formats the data for each wind farm and renders it to the appropriate data tables
+        lapply(WFshapelist$wfs,
                function(x){
-                 titlenm <- paste0(x," Outputs")
                  summtab <- stringr::str_replace_all(x,pattern=" ",replacement="_")
                  dtName <- paste0("summTable_",summtab)
-                 box(title = titlenm, width = 12, status = "primary", solidHeader = TRUE,
-                     DT::dataTableOutput(dtName)
+                 PreB <- mcrmOut$mCRM_output_ls[['PreBreedout']] %>% dplyr::select(Species,contains(x))
+                 PosB <- mcrmOut$mCRM_output_ls[['PostBreedout']] %>% dplyr::select(Species,contains(x))
+                 OthM <- mcrmOut$mCRM_output_ls[['Otherout']] %>% dplyr::select(Species,contains(x))
+                 Final <- tibble(Species = PreB$Species,
+                                 "Pre-Breeding" = PreB[,2],
+                                 "Post-Breeding" = PosB[,2],
+                                 "Other migration" = OthM[,2]
                  )
-               })
-        box(title = "Cumulative Outputs", width = 12, status = "primary", solidHeader = TRUE,
-            DT::dataTableOutput("summTable_cumulative")
-        )
-
-      })
-      
-      lapply(names(mcrmOut$mCRM_output_ls[['PreBreedout']])[c(2:ncol(mcrmOut$mCRM_output_ls[['PreBreedout']]))],
-             function(x){
-               summtab <- stringr::str_replace_all(x,pattern=" ",replacement="_")
-               dtName <- paste0("summTable_",summtab)
-               PreB <- mcrmOut$mCRM_output_ls[['PreBreedout']] %>% dplyr::select(Species,contains(x))
-               PosB <- mcrmOut$mCRM_output_ls[['PostBreedout']] %>% dplyr::select(Species,contains(x))
-               OthM <- mcrmOut$mCRM_output_ls[['Otherout']] %>% dplyr::select(Species,contains(x))
-               Final <- tibble(Species = PreB$Species,
-                               "Pre-Breeding" = PreB[,2],
-                               "Post-Breeding" = PosB[,2],
-                               "Other migration" = OthM[,2]
-               )
-               
-               output[[dtName]]<- DT::renderDataTable({
-                    datatable(Final,rownames=FALSE, extensions="Buttons",options=list(buttons = c('copy', 'csv', 'excel', 'pdf', 'print')))
+                 
+                 output[[dtName]]<- DT::renderDataTable({
+                   datatable(Final,rownames=FALSE, extensions="Buttons",
+                             options=list(buttons = c('copy', 'csv', 'excel', 'pdf', 'print')))
                  })
-             })
-      output$summTable_cumulative <- DT::renderDataTable({
-        datatable(cumulTab,rownames=FALSE,extensions="Buttons",options=list(buttons = c('copy', 'csv', 'excel', 'pdf', 'print')))
-      })
-      
-      
-      # output$summTable_DT_PrB<- DT::renderDataTable({
-      #   datatable(PreBreedout,rownames=FALSE)
-      # })
-      # output$summTable_DT_PoB<- DT::renderDataTable({
-      #   datatable(PostBreedout,rownames=FALSE)
-      # })
-      # output$summTable_DT_O<- DT::renderDataTable({
-      #   datatable(Otherout,rownames=FALSE)
-      # })
-      # output$cumulTable_DT<- DT::renderDataTable({
-      #   datatable(cumulTab,rownames=FALSE)
-      # })
-      
-      
-      output$Simulation_Download <- renderUI({
-        tagList(
-          column(12, align = "right", 
-                 shinyBS::tipify(downloadButton("dwnld_ModelOuts", "Download Outputs"), 
-                                 title = "Download zip file with plots and tables presented below", 
-                                 placement = "left", trigger = "hover", options = list(container = "body"))),
-          
-        )
-      })
-    }
-
-    
-    
-    
-    
-  })  
+               })
+        output$summTable_cumulative <- DT::renderDataTable({
+          datatable(cumulTab,rownames=FALSE,extensions="Buttons",
+                    options=list(buttons = c('copy', 'csv', 'excel', 'pdf', 'print')))
+        })
+        
+        
+        output$Simulation_Download <- renderUI({
+          tagList(
+            column(12, align = "right", 
+                   shinyBS::tipify(downloadButton("dwnld_ModelOuts", "Download Outputs"), 
+                                   title = "Download zip file with plots and tables presented below", 
+                                   placement = "left", trigger = "hover", options = list(container = "body"))),
+            
+          )
+        }) ## End output$Simulation_Download
+      }) ## End try
+    } ## End if/else
+  })  ## End observeEvent(input$actButtonInput_simulPars_GO) 
   
   
   
