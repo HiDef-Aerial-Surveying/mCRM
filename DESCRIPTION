@@ -1,15 +1,14 @@
 Package: mCRM
 Title: Avian Migration Collision Risk Model
-Version: 0.2.0
+Version: 0.3.0
 Authors@R: person('HiDef Aerial Surveying Ltd.', '', email = 'grant.humphries@hidefsurveying.co.uk', role = c('cre', 'aut'))
-Description: This application is an extension of the stochastic collision risk model focused on migratory birds
+Description: This application is an extension of the stochastic collision risk model focused on migratory birds.
 License: MIT + file LICENSE
 Imports: 
     config,
     golem,
     shiny,
     attempt,
-    DT,
     glue,
     htmltools,
     shinydashboard,
@@ -20,21 +19,10 @@ Imports:
     ggplot2,
     magrittr,
     shinyBS,
-    msm,
-    V8,
     shinyWidgets,
-    data.table,
     zip,
-    RColorBrewer,
-    pracma,
-    heatmaply,
-    devtools,
-    purrr,
-    processx,
     pkgload,
-    tidyr,
     stringr,
-    textshape,
     tibble,
     leaflet,
     shinycssloaders,
@@ -47,9 +35,11 @@ Imports:
     tools,
     readxl,
     officedown,
-    viridis,
     reshape2,
-    sp
+    DT,
+    sp,
+    bsplus,
+    openxlsx
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.1.2
