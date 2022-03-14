@@ -1,30 +1,19 @@
-#' 
 #' @param request Internal parameter for `{shiny}`. 
 #'     DO NOT REMOVE.
 #' @import shiny
 #' @import shinydashboard
 #' @import shinycssloaders
-#' @import shinyjs
-#' @import shinyalert
 #' @import shinyBS
 #' @import rhandsontable
-#' @import plyr
-#' @import purrr
-#' @import tidyr
-#' @import ggplot2
-#' @import magrittr
-#' @import msm
-#' @import V8
 #' @import shinyWidgets
-#' @import data.table
-#' @import DT
 #' @import zip
-#' @import RColorBrewer
-#' @import pracma
-#' @import heatmaply
 #' @import leaflet
 #' @import stochLAB
-#' @importFrom DT dataTableOutput
+#' @importFrom DT DTOutput
+#' @importFrom shinyjs useShinyjs
+#' @importFrom shinyWidgets actionBttn
+#' @importFrom shinyWidgets downloadBttn
+#' @importFrom bsplus bs_embed_tooltip
 #' @noRd
 #' 
 
@@ -194,19 +183,69 @@ app_ui <- function(request) {
         tabItem(tabName="tab_generateScenarios",class="active",
                 fluidRow(
                  column(12,
-                        p("Click the button to generate a spreadsheet of scenarios to run based on your selections"),
-                        HTML("<p><strong>You must generate these scenarios before continuing</strong></p>"),
-                        p("This list can be edited manually, or you may copy and paste from a spreadsheet")
+                        h1("Generate windfarm scenarios"),
+                        p("Using the buttons below, you can either generate scenarios based on your inputs in Steps 1 and 2,\
+                           Download those scenarios as an XLSX worksheet so you can easily facilitate changing parameters,
+                           Upload scenarios using the worksheet template,
+                           or Download a blank worksheet that you can fill in and upload."),
+                        h3("There must be scenarios in these tables before you proceed to Step 4"),
+                        p("All the tables generated in this step can be edited on this screen using Excel-style copy and pasting")
                         ),
-                 column(3,
-                        actionButton("button_generate_scenarios","Generate Scenarios", class="btn-lg btn-success")),
-                 column(3,
-                        actionButton("button_download_scenarios_modal","Download Scenarios", class="btn-lg btn-warning")),
-                 column(3,
-                        actionButton("button_upload_scenarios_modal","Upload Scenarios", class="btn-lg btn-primary")),
-                 column(3,
-                        a(href='mCRM_worksheet.xlsx',"Download Scenario worksheet",download=NA,target="_blank",
-                          class="btn btn-default action-button btn-lg btn-info"))
+                 column(1,
+                        shinyWidgets::actionBttn(
+                          inputId =  "button_generate_scenarios",
+                          color = "success",
+                          style = "material-circle",
+                          icon = icon("gear"),
+                          size = "lg"
+                        ) %>%
+                          bsplus::bs_embed_tooltip(
+                            title = "Generate scenario", 
+                            placement = "bottom")#,
+                        #class = "css_col_inline_btns"
+                       ),
+                 column(1,
+                        shinyWidgets::actionBttn(
+                          inputId =  "button_download_scenarios_modal",
+                          color = "warning",
+                          style = "material-circle",
+                          icon = icon("download"),
+                          size = "lg"
+                        ) %>%
+                          bsplus::bs_embed_tooltip(
+                            title = "Download constructed scenarios", 
+                            placement = "bottom")
+                        #actionButton("button_download_scenarios_modal","Download Scenarios", class="btn-lg btn-warning")
+                        
+                        ),
+                 column(1,
+                        shinyWidgets::actionBttn(
+                          inputId =  "button_upload_scenarios_modal",
+                          color = "primary",
+                          style = "material-circle",
+                          icon = icon("upload"),
+                          size = "lg"
+                        ) %>%
+                          bsplus::bs_embed_tooltip(
+                            title = "Upload scenarios", 
+                            placement = "bottom")
+                        
+                        #actionButton("button_upload_scenarios_modal","Upload Scenarios", class="btn-lg btn-primary")
+                        
+                        ),
+                 column(1,
+                        shinyWidgets::downloadBttn(
+                          "button_download_blank_worksheet",
+                          color = "default",
+                          style = "material-circle",
+                          size = "lg"
+                        ) %>%
+                          bsplus::bs_embed_tooltip(
+                            title = "Download blank worksheet", 
+                            placement = "bottom")
+                        )
+                        #a(href='mCRM_worksheet.xlsx',"Download Scenario worksheet",download=NA,target="_blank",
+                          #class="btn btn-default action-button btn-lg btn-info"))
                 ),
                 fluidRow(
                 style="padding-top:20px;",
@@ -275,7 +314,7 @@ app_ui <- function(request) {
                          uiOutput("summTables"),
                          
                          box(title = "Cumulative Outputs", width = 12, status = "primary", solidHeader = TRUE,
-                             DT::dataTableOutput("summTable_cumulative")
+                             DT::DTOutput("summTable_cumulative")
                          )
                          )
                 )
@@ -352,8 +391,6 @@ golem_add_external_resources <- function(){
       path = app_sys('app/sbs'),
       app_title = 'mCRM'
     ),
-    # Add here other external resources
-    # for example, you can add shinyalert::useShinyalert()
     
   )
 }

@@ -9,6 +9,8 @@
 #' @importFrom shiny NS tagList
 #' @import shinyWidgets
 #' @import shinyBS
+#' @importFrom DT renderDT
+#' @importFrom DT DTOutput
 #'  
 mod_WindFarmFeats_ui <- function(id){
   idv <- stringr::str_replace_all(id," ", "_")
@@ -154,7 +156,7 @@ mod_WindFarmFeats_ui <- function(id){
               br(),
               br(),
               
-              DT::dataTableOutput(ns("hotInput_turbinePars_monthOps")),
+              DT::DTOutput(ns("hotInput_turbinePars_monthOps")),
           )
         )
         

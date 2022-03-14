@@ -10,6 +10,17 @@
     margin-bottom: 40px !important;
 }
 
+h2 {
+  font-size: 18pt;
+}
+
+h3 {
+  font-size: 16pt;
+}
+
+p {
+  font-size: 12pt;
+}
 
 .main-header .logo {
   height:70px;

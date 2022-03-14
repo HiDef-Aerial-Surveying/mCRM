@@ -5,23 +5,32 @@
 #' @import shiny
 #' @import shinyBS
 #' @import shinyWidgets
-#' @import shinyalert
-#' @import dplyr
-#' @import stringr
+#' @import ggplot2
 #' @import leaflet
-#' @import tidyr
 #' @import tibble
 #' @import stochLAB
-#' @import foreach
 #' @import officedown
 #' @import sp
 #' @import sf
+#' @importFrom dplyr filter
+#' @importFrom dplyr select
+#' @importFrom reshape2 melt
+#' @importFrom shinyalert shinyalert
 #' @importFrom readxl excel_sheets
 #' @importFrom readxl read_xlsx
 #' @importFrom tools file_ext
-#' @importFrom DT renderDataTable
 #' @importFrom DT datatable
-#' @noRd
+#' @importFrom DT editData
+#' @importFrom DT renderDT
+#' @importFrom DT DTOutput
+#' @importFrom stringr str_replace_all
+#' @importFrom foreach foreach
+#' @importFrom foreach %do%
+#' @importFrom openxlsx addWorksheet
+#' @importFrom openxlsx writeData
+#' @importFrom openxlsx saveWorkbook
+#' @importFrom readxl excel_sheets
+#' @importFrom readxl read_xlsx
 #' 
 #' 
 app_server <- function( input, output, session ) {
@@ -39,9 +48,9 @@ app_server <- function( input, output, session ) {
   }
   
 
-  #' ----------------------------------------------------
-  #  ----         setting session specifics          ----
-  #' ----------------------------------------------------
+  # ----------------------------------------------------
+  # ----         setting session specifics          ----
+  # ----------------------------------------------------
   
   # --- session's "global" Variables
 
@@ -704,6 +713,52 @@ app_server <- function( input, output, session ) {
   })
   
 
+
+   # Download worksheet ------------------------------------------------------
+
+  output$button_download_blank_worksheet <- downloadHandler(
+    
+    filename = function() {
+      paste(input$txtInput_dwnld_scenario_name,".xlsx", sep = "")
+    },
+    content = function(file) {
+      wb <- openxlsx::createWorkbook()
+      
+      TurbineDat <- data.frame(matrix(nrow=1,ncol=48))
+      names(TurbineDat) <- c("Wind farm","Latitude","Width","Proportion upwind flight",
+                      "Number of turbines","Number of blades",
+                      "Rotor radius", "Blade width",
+                      "Rotation Speed", "Rotation Speed SD", "Blade Pitch", "Blade Pitch SD",
+                      paste0(month.abb," wind available"),paste0(month.abb," mean downtime"),
+                      paste0(month.abb," SD downtime"))
+      
+      BirdDat <- data.frame(matrix(nrow=1,ncol=17))
+      names(BirdDat) <- c("Species",
+                      "Flight","Body Length",
+                      "Body Length SD", "Wingspan", "Wingspan SD",
+                      "Flight Speed", "Flight Speed SD",
+                      "Avoidance", "Avoidance SD", "PCH","Biogeographic population",
+                      "Proportion in UK", "Total population in UK",
+                      "PrBMigration","PoBMigration",
+                      "OMigration")
+      
+      CountDat <- data.frame(matrix(nrow=1,ncol=4))
+      names(CountDat) <- c("Wind farm","Species", "Population estimate","Population estimate (SD)")
+      
+      openxlsx::addWorksheet(wb,sheetName="BirdData")
+      openxlsx::addWorksheet(wb,sheetName="TurbineData")
+      openxlsx::addWorksheet(wb,sheetName="CountData")
+      
+      openxlsx::writeData(wb,sheet="BirdData",BirdDat)
+      openxlsx::writeData(wb,sheet="TurbineData",TurbineDat)
+      openxlsx::writeData(wb,sheet="CountData",CountDat)
+      openxlsx::saveWorkbook(wb,file,overwrite=TRUE)
+    }
+  )
+  
+  
+  
+  
   # Create reactive values list for storing model output --------------------
 
   mcrmOut <- reactiveValues(
@@ -751,9 +806,9 @@ app_server <- function( input, output, session ) {
       
       #output$cons <- renderUI({
       
-      names(BirdDat) <- str_replace_all(names(BirdDat)," ","")
-      names(TurbineDat) <- str_replace_all(names(TurbineDat)," ","")
-      names(CountDat) <- str_replace_all(names(CountDat)," ","")
+      names(BirdDat) <- stringr::str_replace_all(names(BirdDat)," ","")
+      names(TurbineDat) <- stringr::str_replace_all(names(TurbineDat)," ","")
+      names(CountDat) <- stringr::str_replace_all(names(CountDat)," ","")
       
       outputs <- matrix(nrow=nrow(CountDat),ncol=11)
       
@@ -904,7 +959,7 @@ app_server <- function( input, output, session ) {
                    summtab <- stringr::str_replace_all(x,pattern=" ",replacement="_")
                    dtName <- paste0("summTable_",summtab)
                    box(title = titlenm, width = 12, status = "primary", solidHeader = TRUE,
-                       DT::dataTableOutput(dtName)
+                       DT::DTOutput(dtName)
                    )
                  })
         })
@@ -922,12 +977,12 @@ app_server <- function( input, output, session ) {
                                  "Other migration" = OthM[,2]
                  )
                  
-                 output[[dtName]]<- DT::renderDataTable({
+                 output[[dtName]]<- DT::renderDT({
                    datatable(Final,rownames=FALSE, extensions="Buttons",
                              options=list(buttons = c('copy', 'csv', 'excel', 'pdf', 'print')))
                  })
                })
-        output$summTable_cumulative <- DT::renderDataTable({
+        output$summTable_cumulative <- DT::renderDT({
           datatable(cumulTab,rownames=FALSE,extensions="Buttons",
                     options=list(buttons = c('copy', 'csv', 'excel', 'pdf', 'print')))
         })
