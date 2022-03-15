@@ -1125,9 +1125,9 @@ app_server <- function( input, output, session ) {
     if(WF_shape_choice == "existWindFarms"){
       output$Windfarm_Shapes <- renderUI({
         selectizeInput("selectInput_builtin_wfList",
-                       label = "Select wind farms (Maximum 5)",
+                       label = "Select wind farms",
                        choices = Scotwind_Merged$NAME[order(Scotwind_Merged$NAME)],
-                       options = list(maxItems = 20L)
+                       options = list(maxItems = 50L)
         )      
       })
     }else if(WF_shape_choice == "customWindFarms"){

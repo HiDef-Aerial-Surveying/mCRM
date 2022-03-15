@@ -37,6 +37,11 @@ You can access the mCRM on shinyapps.io:
 Instructions on running the tool can be found at
 <https://hidef-aerial-surveying.github.io/mCRM/>
 
+## Reporting bugs
+
+If you spot something out of place, please report it here:
+[https://hidefdevo.shinyapps.io/mCRM/issues](https://hidefdevo.shinyapps.io/mCRM/)
+
 ## Information
 
 The stochastic migration collision risk model (mCRM) shiny app was
