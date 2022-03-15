@@ -57,10 +57,7 @@ mod_bird_features_ui <- function(id){
                                        value = TRUE, col = "GB", type = "OO"),
                           uiOutput(ns('other_dates')))
                  )
-                 
-                 
              ),
-             
              box(width=6,
                  title = "Migration corridor",
                  status = "primary",
@@ -73,7 +70,6 @@ mod_bird_features_ui <- function(id){
       )
       
     ),
-    
     fluidRow(
       column(width=12,
              box(width = 6,
@@ -153,8 +149,6 @@ mod_bird_features_ui <- function(id){
                               label = "UK Population",
                               value = 1,
                               min=0,max=1,step=1,width="33%")
-                 
-                 
              ),
              
              box(width = 6,
@@ -165,12 +159,7 @@ mod_bird_features_ui <- function(id){
                  plotOutput(ns("Density_Plot_Space"))
              )
       )
-      
-      
     )
-    
-    
-    
   )
 }
 

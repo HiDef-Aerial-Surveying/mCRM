@@ -14,6 +14,10 @@
 #' @import sf
 #' @importFrom dplyr filter
 #' @importFrom dplyr select
+#' @importFrom dplyr mutate
+#' @importFrom dplyr left_join
+#' @importFrom dplyr group_by
+#' @importFrom plyr ldply
 #' @importFrom reshape2 melt
 #' @importFrom shinyalert shinyalert
 #' @importFrom readxl excel_sheets
@@ -988,15 +992,40 @@ app_server <- function( input, output, session ) {
         })
         
         
-        output$Simulation_Download <- renderUI({
+        output$Report_Download <- renderUI({
           tagList(
-            column(12, align = "right", 
-                   shinyBS::tipify(downloadButton("dwnld_ModelOuts", "Download Outputs"), 
-                                   title = "Download zip file with plots and tables presented below", 
-                                   placement = "left", trigger = "hover", options = list(container = "body"))),
+            column(12,
+                   shinyWidgets::downloadBttn(
+                     "dwnld_Report",
+                     label = "Generate report",
+                     color = "primary",
+                     style = "bordered",
+                     size = "sm"
+                   ) %>%
+                     bsplus::bs_embed_tooltip(
+                       title = "Generate report", 
+                       placement = "bottom")
+                  ))
             
-          )
         }) ## End output$Simulation_Download
+        
+        output$Download_Tables <- renderUI({
+          tagList(
+            column(12,
+                   shinyWidgets::downloadBttn(
+                     "dwnld_Tables",
+                     label = "Download tables",
+                     color = "primary",
+                     style = "bordered",
+                     size = "sm"
+                   ) %>%
+                     bsplus::bs_embed_tooltip(
+                       title = "Download output tables", 
+                       placement = "bottom")
+            ))
+          
+        }) ## End output$Download_Tables
+
       }) ## End try
     } ## End if/else
   })  ## End observeEvent(input$actButtonInput_simulPars_GO) 
@@ -1007,7 +1036,7 @@ app_server <- function( input, output, session ) {
   #  ----              Download model outputs                    ----
   # ----------------------------------------------------------------
 
-  output$dwnld_ModelOuts <- downloadHandler(
+  output$dwnld_Report <- downloadHandler(
     filename = "modelOut.docx",
     content = function(file) {
       
@@ -1033,15 +1062,59 @@ app_server <- function( input, output, session ) {
                         params = params,
                         envir = new.env(parent = globalenv())
       )
-      #basedir <- getwd()
-      #setwd(file.path("shinyOutputs", sessTempOutFolder))
-      #fs <- list.files()
-      #zip(zipfile = file, files = fs)
-      #setwd(basedir)
     },
-    #contentType = "application/zip"
   )
   
+  output$dwnld_Tables <- downloadHandler(
+    filename = "mCRM_Output_tables.xlsx",
+    content = function(file) {
+      
+      #browser()
+      params <- list(prebreedtable = mcrmOut$mCRM_output_ls[['PreBreedout']],
+                     postbreedtable = mcrmOut$mCRM_output_ls[['PostBreedout']],
+                     othertable = mcrmOut$mCRM_output_ls[['Otherout']],
+                     cumultable = mcrmOut$mCRM_output_ls[['cumulTab']],
+                     bootdata = mcrmOut$mCRM_boots_ls)
+      
+      wb <- openxlsx::createWorkbook()
+      BirdDat <- tryCatch(BirdsData(),
+                          error=function(e) NULL)
+      TurbineDat <- tryCatch(WindFarmsData(),
+                             error=function(e) NULL)
+      CountDat <- tryCatch(ScenariosData(),
+                           error=function(e) NULL)
+      
+      openxlsx::addWorksheet(wb,sheetName="BirdData_Input")
+      openxlsx::addWorksheet(wb,sheetName="TurbineData_Input")
+      openxlsx::addWorksheet(wb,sheetName="CountData_Input")
+      openxlsx::addWorksheet(wb,sheetName="Pre_Breeding_Output")
+      openxlsx::addWorksheet(wb,sheetName="Post_Breeding_Output")
+      openxlsx::addWorksheet(wb,sheetName="Other_Migration_Output")
+      openxlsx::addWorksheet(wb,sheetName="Cumulative_Output")
+      
+      openxlsx::writeData(wb,sheet="BirdData_Input",BirdDat)
+      openxlsx::writeData(wb,sheet="TurbineData_Input",TurbineDat)
+      openxlsx::writeData(wb,sheet="CountData_Input",CountDat)
+      openxlsx::writeData(wb,sheet="Pre_Breeding_Output",params$prebreedtable)
+      openxlsx::writeData(wb,sheet="Post_Breeding_Output",params$postbreedtable)
+      openxlsx::writeData(wb,sheet="Other_Migration_Output",params$othertable)
+      openxlsx::writeData(wb,sheet="Cumulative_Output",params$cumultable)
+      
+      lapply(names(params$bootdata),function(x){
+        openxlsx::addWorksheet(wb,sheetName=paste0(x,"_Boot"))
+        datf <- plyr::ldply(names(params$bootdata[[x]]),function(y){
+          df <- data.frame(params$bootdata[[x]][[y]])
+          df$Species <- y
+          return(df)
+        })
+        openxlsx::writeData(wb,sheet=paste0(x,"_Boot"),datf)
+      })
+      
+      
+      
+      openxlsx::saveWorkbook(wb,file,overwrite=TRUE)
+    },
+  )
   
   
 

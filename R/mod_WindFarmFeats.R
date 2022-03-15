@@ -40,7 +40,6 @@ mod_WindFarmFeats_ui <- function(id){
                                           " Used in conjunction with turbine model to calculate the target power of the wind farm."),
                            options = list(container = "body"), placement = "right", trigger = "hover"),
         
-        
         # ---  Latitude
         numericInput(width = "85%", 
                      inputId = ns("numInput_windfarmPars_Latitude"), 
@@ -58,7 +57,6 @@ mod_WindFarmFeats_ui <- function(id){
         shinyBS::bsTooltip(id = ns("lbl_windfarmWidth"), 
                            title = paste0("The wind farm width"),
                            options = list(container = "body"), placement = "right", trigger = "hover"),
-        
         
         # --- % upwind flights
         numericInput(width = "85%", 

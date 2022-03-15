@@ -5,9 +5,9 @@ account: hidefdevo
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 3814885
-bundleId: 5671264
+bundleId: 5682524
 url: https://hidefdevo.shinyapps.io/mCRM/
-when: 1646997284.30568
-lastSyncTime: 1646997284.30568
+when: 1647274504.17627
+lastSyncTime: 1647274504.17627
 asMultiple: FALSE
 asStatic: FALSE

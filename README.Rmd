@@ -13,42 +13,51 @@ knitr::opts_chunk$set(
 )
 ```
 
-# mCRM
+# mCRM <img src='docs/images/hexSticker.png' align="right" height="139" />
+## A Shiny app to model collision risk of migratory birds in offshore wind farms
+
 
 <!-- badges: start -->
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
-
-The goal of mCRM is to ...
 
 ## Installation
 
-You can install the released version of mCRM from [CRAN](https://CRAN.R-project.org) with:
+You can install the github version of mCRM from here with:
 
 ``` r
-install.packages("mCRM")
+devtools::install_github("HiDef-Aerial-Surveying/mCRM")
+```
+## mCRM usage (local)
+
+Once installed as a package, the mCRM can be run like this:  
+
+``` r
+mCRM::runApp()
 ```
 
-## Example
+## mCRM usage (online)
 
-This is a basic example which shows you how to solve a common problem:
+You can access the mCRM on shinyapps.io: [https://hidefdevo.shinyapps.io/mCRM/](https://hidefdevo.shinyapps.io/mCRM/)  
 
-```{r example}
-library(mCRM)
-## basic example code
-```
 
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
+## Using the interface
 
-```{r cars}
-summary(cars)
-```
+Instructions on running the tool can be found at [https://hidef-aerial-surveying.github.io/mCRM/](https://hidef-aerial-surveying.github.io/mCRM/)
 
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this. You could also use GitHub Actions to re-render `README.Rmd` every time you push. An example workflow can be found here: <https://github.com/r-lib/actions/tree/master/examples>.
 
-You can also embed plots, for example:
+## Information
 
-```{r pressure, echo = FALSE}
-plot(pressure)
-```
+The stochastic migration collision risk model (mCRM) shiny app was developed by HiDef Aerial Surveying for Marine Scotland Science. This tool is meant to be used to estimate the collision risk of migratory birds passing through offshore windfarms.  
 
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub and CRAN.
+The underlying functionality of the model is driven by the `stochLAB` package, which can be found at [https://github.com/HiDef-Aerial-Surveying/stochLAB](https://github.com/HiDef-Aerial-Surveying/stochLAB).  The stochLAB package was developed by [DMP statistics](https://github.com/dmpstats) and [HiDef Surveying](https://github.com/Hidef-Aerial-Surveying). 
+
+This tool is partnered with the stochastic collision risk model (sCRM) tool, developed by [DMP statistics](https://github.com/dmpstats), which is currently under development and will be deployed soon.
+
+
+
+
+
+
+
+

@@ -14,6 +14,7 @@
 #' @importFrom shinyWidgets actionBttn
 #' @importFrom shinyWidgets downloadBttn
 #' @importFrom bsplus bs_embed_tooltip
+#' @importFrom pkgload pkg_version
 #' @noRd
 #' 
 
@@ -29,16 +30,11 @@ app_ui <- function(request) {
     titleWidth =270,
     #title = "Avian Migration CRM",
     
-    tags$li(class = "dropdown", actionLink("appvrsn", label = tags$b("v0.0.9"), style = "font-size: 19px")), 
+    tags$li(class = "dropdown", actionLink("appvrsn", label = tags$b(paste0("v",pkgload::pkg_version())), style = "font-size: 19px")), 
     tags$li(class = "dropdown", a(icon('github', "fa-2x"), href='https://github.com/HiDef-Aerial-Surveying/mCRM', 
                                   style = "padding-top: 10px; padding-bottom: 10px", target='_blank', id="lbl_codeLink")),
     tags$li(class = "dropdown", a(icon('bug', "fa-2x"), href='https://github.com/HiDef-Aerial-Surveying/mCRM/issues', #exclamation-circle
                                   style = "padding-top: 10px; padding-bottom: 10px", target='_blank', id="lbl_issuesLink")),
-    tags$li(class = "dropdown", actionLink("saveInputs_btt", label = NULL, icon("save", "fa-2x", lib = "font-awesome"),
-                                           style = "padding-top: 10px; padding-bottom: 10px")),
-    tags$li(class = "dropdown", actionLink("restoreInputs_btt", label = NULL, icon("window-restore", "fa-2x", lib = "font-awesome"),
-                                           style = "padding-top: 10px; padding-bottom: 10px")),
-    
     
     tags$li(class = "dropdown headerimg", a(img(src = "www/bioConsultSH_Logo_2.png", height = "40px"), href='https://bioconsult-sh.de/en/',
                                   style = "padding-top: 5px; padding-bottom: 5px;", target='_blank', id="lbl_bioConsultLogoLink"),
@@ -120,7 +116,16 @@ app_ui <- function(request) {
                              #actionButton("test","test", class="btn-lg btn-success"),
                              
                              p("Click button to update the list of windfarms"),
-                             actionButton("button_update_Windfarm_tabs","Update windfarm list", class="btn-lg btn-success"),
+                             
+                             shinyWidgets::actionBttn(
+                               "button_update_Windfarm_tabs",
+                               label = "Update windfarm list",
+                               icon = icon("wrench"),
+                               style="stretch",
+                               color="success",
+                               no_outline=FALSE
+                             ),
+                             
                              br(),
                              
                              p("If drawing from the existing list of windfarms, simply click in the text box above\
@@ -144,8 +149,7 @@ app_ui <- function(request) {
                          box(width=12,
                              status='primary',
                              tabsetPanel(id="windfarm_Tabs",
-                                         type="tabs"
-                             )
+                                         type="tabs")
                          )))
         ),
         tabItem(tabName="tab_birdPars", class="active",
@@ -164,7 +168,15 @@ app_ui <- function(request) {
                            ),
                            br(),
                            p("Click to update the species based on the above selection. If you remove a species, you'll have to re-enter the data"),
-                           actionButton("button_update_Species_tabs","Update species list", class="btn-lg btn-success"),
+                           shinyWidgets::actionBttn(
+                             "button_update_Species_tabs",
+                             label = "Update species list",
+                             icon = icon("wrench"),
+                             style="stretch",
+                             color="success",
+                             no_outline=FALSE
+                           ),
+                           
                            br(),
                            uiOutput("Species_Count")
                     )
@@ -307,7 +319,8 @@ app_ui <- function(request) {
                                           icon = icon("cogs"), width = "100%")
                          ),
                          box(title="Download Outputs",width=12,status="primary",solidHeader=TRUE,
-                             uiOutput("Simulation_Download")
+                             uiOutput("Report_Download"),
+                             uiOutput("Download_Tables")
                              )
                          ),
                   column(10,
