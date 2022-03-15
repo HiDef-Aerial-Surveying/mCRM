@@ -44,7 +44,25 @@ After clicking the "Update windfarm list" button, tabs will appear on the screen
 
 <img src='images/Windfarm_Parameters.png' align="center"/>
 
-The inputs are filled with default values but can be updated based on specifics for the wind farms. 
+The inputs are filled with default values but can be updated based on specifics for the wind farms.   
+
+To update the data table, simply double click on it and it will open in editing mode. Hit ***CTRL + Enter*** to finish editing. 
+
+
+## Step 2: Species features
+
+Clicking on the sidebar tab "Step 2: Species features" will bring you to the Species selection page.  As per the windfarm select, click on the dropdown input box to bring up a list of species.  
+
+<img src='images/Species_select.png' align="center"/> 
+
+Select species and click on the "update species list" button.  This will generate a series of tabs for each species where you can input the species parameters to use in the model.  
+
+
+
+
+
+
+
 
 
 
