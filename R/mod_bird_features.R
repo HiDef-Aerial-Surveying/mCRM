@@ -22,15 +22,16 @@ mod_bird_features_ui <- function(id){
                  collapsible = TRUE,
                  fluidRow(
                    column(12,
-                          p("Would you like to use the default migration route or upload your own migration pathway?"),
+                          #p("Would you like to use the default migration route or upload your own migration pathway?"),
+                          p("Default migration pathways are being used. Functionality to add custom pathways is oncoming."),
+                          hr()
+                          #selectInput(inputId = ns("selectInput_spshape_builtin_or_userinput"),
+                          #                  label = "Default migration routes or upload your own line shapefile",
+                          #                  choices = c("Default migration routes" = "existMigration",
+                          #                              "Custom migration routes" = "customMigration")
+                          #            ),
                           
-                          selectInput(inputId = ns("selectInput_spshape_builtin_or_userinput"),
-                                            label = "Default migration routes or upload your own line shapefile",
-                                            choices = c("Default migration routes" = "existMigration",
-                                                        "Custom migration routes" = "customMigration")
-                                      ),
-                          
-                          uiOutput(ns("spShape_upload_shape"))
+                          #uiOutput(ns("spShape_upload_shape"))
                    )  
                  ),
                  fluidRow(
