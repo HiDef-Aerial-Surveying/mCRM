@@ -30,7 +30,14 @@ app_ui <- function(request) {
     titleWidth =270,
     #title = "Avian Migration CRM",
     
-    tags$li(class = "dropdown", actionLink("appvrsn", label = tags$b(paste0("v",pkgload::pkg_version())), style = "font-size: 19px")), 
+    #tags$li(class = "dropdown", actionLink("appvrsn", label = tags$b(paste0("v",pkgload::pkg_version())), style = "font-size: 19px")), 
+    tags$li(class = "dropdown", a(tags$b(paste0("v",pkgload::pkg_version())), href="https://github.com/HiDef-Aerial-Surveying/mCRM/blob/master/NEWS.md",
+                                  style = "padding-top: 10px; padding-bottom: 10px", target='_blank', id="lbl_newsLink")),
+    
+    tags$li(class = "dropdown", a(icon('file', "fa-2x"), href='https://hidef-aerial-surveying.github.io/mCRM/', 
+                                  style = "padding-top: 10px; padding-bottom: 10px", target='_blank', id="lbl_guideLink")),
+    tags$li(class = "dropdown", a(icon('video', "fa-2x"), href='#', 
+                                  style = "padding-top: 10px; padding-bottom: 10px", target='_blank', id="lbl_videoLink")),
     tags$li(class = "dropdown", a(icon('github', "fa-2x"), href='https://github.com/HiDef-Aerial-Surveying/mCRM', 
                                   style = "padding-top: 10px; padding-bottom: 10px", target='_blank', id="lbl_codeLink")),
     tags$li(class = "dropdown", a(icon('bug', "fa-2x"), href='https://github.com/HiDef-Aerial-Surveying/mCRM/issues', #exclamation-circle
@@ -338,17 +345,17 @@ app_ui <- function(request) {
                        title = paste0("Submit issues, queries & suggestions. Thanks!"),
                        options = list(container = "body"), placement = "bottom", trigger = "hover"),
     shinyBS::bsTooltip(id = "lbl_codeLink",
-                       title = paste0("Code and user manual"),
+                       title = paste0("Code"),
                        options = list(container = "body"), placement = "bottom", trigger = "hover"),
-    shinyBS::bsTooltip(id = "appvrsn",
+    shinyBS::bsTooltip(id = "lbl_newsLink",
                        title = paste0("Release notes"),
                        options = list(container = "body"), placement = "bottom", trigger = "hover"),
-    shinyBS::bsTooltip(id = "saveInputs_btt",
-                       title = "Store currently specified input values",
+    shinyBS::bsTooltip(id = "lbl_guideLink",
+                       title = paste0("User Guide"),
                        options = list(container = "body"), placement = "bottom", trigger = "hover"),
-    shinyBS::bsTooltip(id = "restoreInputs_btt",
-                       title = "Restore inputs to latest stored values",
-                       options = list(container = "body"), placement = "bottom", trigger = "hover")
+    shinyBS::bsTooltip(id = "lbl_videoLink",
+                       title = paste0("User Guide (video)"),
+                       options = list(container = "body"), placement = "bottom", trigger = "hover"),
     
   )
   
