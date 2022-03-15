@@ -45,7 +45,8 @@ LazyData: true
 RoxygenNote: 7.1.2
 URL: https://github.com/hiDef-Aerial-Surveying/mCRM
 BugReports: https://github.com/hiDef-Aerial-Surveying/mCRM/issues
-Suggests: 
+Suggests:
+    rmarkdown,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Depends: 
