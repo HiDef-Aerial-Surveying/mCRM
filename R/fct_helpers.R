@@ -1,4 +1,6 @@
-
+#' NormNumericInput
+#' 
+#' Creates a Numeric input with a SD input as well
 #' @import shinyBS
 #' @export
 NormNumericInput <- function(paramID,  varName, infoId="foo", infoText ="", #specID,

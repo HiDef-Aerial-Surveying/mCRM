@@ -14,7 +14,7 @@
 #' @importFrom shinyWidgets actionBttn
 #' @importFrom shinyWidgets downloadBttn
 #' @importFrom bsplus bs_embed_tooltip
-#' @importFrom pkgload pkg_version
+#' @importFrom utils packageVersion
 #' @noRd
 #' 
 
