@@ -41,9 +41,8 @@ NormNumericInput <- function(paramID,  varName, infoId="foo", infoText ="", #spe
 }
 
 
-# Functions for Plotting --------------------------------------------------
-
 # Get wind farm width function ---------------------------------------------
+
 #' Get windfarm width
 #'
 #' Returns the width of the windfarm in kilometers for use in the flux calculations.
@@ -68,23 +67,16 @@ get_wf_width <- function(polyg){
 
 # Functions for Plotting --------------------------------------------------
 
-#' function for Normal density plot of model input parameters
-#' @importFrom hrbrthemes theme_ipsum
-#' @export
-normDens_ParsPlots <- function(mu, stdev, fill="olivedrab", xlab, refValue_E = mu, refValue_SD = stdev){
-  req(mu, stdev)
-  data.frame(qtls = qnorm(c(0.0001, 0.9999), mean = mu, sd=stdev))  %>%
-    ggplot(aes(qtls)) +
-    stat_function(fun=dnorm, args = list(mean = mu, sd = stdev), col = "black", size =1) +
-    stat_function(fun=dnorm, args = list(mean = mu, sd = stdev), geom="area", fill = fill, col = "black", alpha = 0.3) +
-    labs(y="Density", x = xlab) + hrbrthemes::theme_ipsum(axis_title_size = 14)+
-    scale_y_continuous(expand=c(0,0)) +
-    coord_cartesian(xlim = qnorm(c(0.000001, 0.999999), mean = refValue_E, sd = refValue_SD))
-}
-
 
 #' function for Truncated Normal density plot of model input parameters
 #' @importFrom hrbrthemes theme_ipsum
+#' @importFrom msm dtnorm
+#' @importFrom msm qtnorm
+#' @importFrom data.table between
+#' @importFrom dplyr mutate
+#' @importFrom dplyr filter
+#' @importFrom dplyr select
+#' 
 #' @export
 truncNormPars_densPlots <- function(mu, stdev, lower = -Inf, upper = Inf, fill="olivedrab", xlab){
   req(mu, stdev)
@@ -134,135 +126,6 @@ truncNormPars_densPlots <- function(mu, stdev, lower = -Inf, upper = Inf, fill="
 sum.stdevs <- function(x){
   return(sqrt(sum(sapply(x,function(x) x^2),na.rm=T)))
 }
-
-
-# Functions for Alerts on Parameter Validation  ---------------------------
-
-# General function for alerts for parameters with truncated normal
-tnormParamsAlert <- function(expVal, stdv, varName, varTag, session){
-  
-  c_alertId_E <- paste0("alertInput_", varTag, "_E")
-  c_alertId_SD <- paste0("alertInput_", varTag, "_SD")
-  
-  if(!is.na(expVal) & !is.na(stdv)){
-    if(stdv == 0 & expVal <= 0){
-      createAlert(session, anchorId = "alert", alertId = c_alertId_E, title = "Oops...",
-                  content = paste0("<b>", varName, ":</b> needs Mean > 0<br/> when SD = 0"), append = TRUE, style = "danger")
-    }else{
-      closeAlert(session, alertId = c_alertId_E)
-    }
-  }
-  
-  if(!is.na(stdv)){
-    if(stdv < 0){
-      createAlert(session, anchorId = "alert", alertId = c_alertId_SD, title = "Oops...",
-                  content = paste0("<b>", varName, ":</b> needs SD >= 0"), append = TRUE, style = "danger")
-    }else{
-      closeAlert(session, alertId = c_alertId_SD)
-    }
-  }
-}
-
-
-
-# General function for alerts for validation of Beta distributed parameters
-betaParamsAlert <- function(p, stdv, varName, varTag, session){
-  
-  c_alertId_E <- paste0("alertInput_", varTag, "_E")
-  c_alertId_SD <- paste0("alertInput_", varTag, "_SD")
-  
-  #if(p == 0.2 & stdv == 0.2){ browser() }  
-  
-  betaMeanVarCond <- stdv^2 < p*(1-p)
-  
-  # input validation for p
-  if(!is.na(p)){
-    if(p < 0 | p > 1){
-      createAlert(session, anchorId = "alert", alertId = c_alertId_E, title = "Oops...",
-                  content = paste0("<b>", varName, ":</b> needs Mean <br/> between 0 and 1"), append = TRUE, style = "danger")
-    }else{
-      closeAlert(session, alertId = c_alertId_E)
-    }
-  }
-  
-  # input validation for SD 
-  if(!is.na(stdv) & !is.na(p)){
-    if(p >= 0 & p <= 1){
-      if(stdv > 0){
-        if(p == 0 | p == 1){
-          createAlert(session, anchorId = "alert", alertId = c_alertId_SD, title = "Oops...",
-                      content = paste0("<b>", varName, ":</b> <br/> needs SD = 0 when Mean is 0 or 1"), append = TRUE, style = "danger")
-        }else{
-          closeAlert(session, alertId = c_alertId_SD)
-        }
-        
-        if(!betaMeanVarCond){
-          condLimit <- round(sqrt(p*(1-p)), digits = 3)
-          createAlert(session, anchorId = "alert", alertId = c_alertId_SD, title = "Oops...",
-                      content = paste0("<b>", varName, ":</b> <br/> needs SD < ", condLimit, " for the <br/> Mean p = ", round(p, digits = 3)), append = TRUE, style = "danger")
-        }else{
-          closeAlert(session, alertId = c_alertId_SD)
-        }
-      }else{
-        if(stdv < 0){
-          createAlert(session, anchorId = "alert", alertId = c_alertId_SD, title = "Oops...",
-                      content = paste0("<b>", varName, ":</b> needs SD >= 0"), append = TRUE, style = "danger")
-        }else{
-          closeAlert(session, alertId = c_alertId_SD)
-        }
-      }
-    }
-  }
-  
-}
-
-
-
-# Functions for customized output from distribution functions  ------------
-
-# generate random samples from a beta distribution, parameterized as mean and sd, and returning NAs if conditions are not met
-rbeta_dmp <- function(n, p, sd){
-  
-  eta <- p*(1-p)/sd^2 - 1
-  alpha <- eta*p
-  beta <- eta*(1-p)
-  
-  betaMeanVarCond <- sd^2 < p*(1-p)
-  
-  if(is.na(p) | is.na(sd)){
-    
-    out <- rep(NA, n)
-    warning("NA values for p and/or stdev - NAs produced")
-    
-  }else{
-    
-    if(p >= 0 & p <= 1){
-      
-      if(sd < 0){
-        out <- rep(NA, n)
-        warning("stdev < 0 - NAs produced")
-      }
-      
-      if(sd == 0){
-        out <- rep(p, n)
-      }
-      
-      if(sd > 0){
-        if(betaMeanVarCond){
-          out <- rbeta(n, shape1 = alpha, shape2 = beta)
-        }else{
-          out <- rep(NA, n)
-          warning("condition var < p*(1 - p) not met - NAs produced")
-        }
-      }
-    }else{
-      out <- rep(NA, n)
-      warning("p < 0 | p > 1 - NAs produced")
-    }
-  }
-  return(out)
-}
-
 
 
 

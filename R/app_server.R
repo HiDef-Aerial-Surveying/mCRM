@@ -17,6 +17,7 @@
 #' @importFrom dplyr mutate
 #' @importFrom dplyr left_join
 #' @importFrom dplyr group_by
+#' @importFrom purrr walk2
 #' @importFrom plyr ldply
 #' @importFrom reshape2 melt
 #' @importFrom shinyalert shinyalert

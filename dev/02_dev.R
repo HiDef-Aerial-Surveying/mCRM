@@ -25,18 +25,8 @@ usethis::use_package("dplyr")
 usethis::use_package("ggplot2")
 usethis::use_package("magrittr")
 usethis::use_package("shinyBS")
-usethis::use_package("msm")
-usethis::use_package("V8")
 usethis::use_package("shinyWidgets")
-usethis::use_package("data.table")
 usethis::use_package("DT")
-usethis::use_package("zip")
-usethis::use_package("RColorBrewer")
-usethis::use_package("pracma")
-usethis::use_package("heatmaply")
-usethis::use_package("devtools")
-usethis::use_package("shinyStore")
-
 
 
 ## Add modules ----

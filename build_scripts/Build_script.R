@@ -1,27 +1,6 @@
 ##################################
 ### Use this script to build the rda tables in the data folder
 ### the usethis package converts to rdas for use in the app
-library(tidyverse)
-library(shiny)
-library(shinydashboard)
-library(shinyjs)
-library(rhandsontable)
-library(plyr)
-library(purrr)
-library(dplyr)
-library(ggplot2)
-library(magrittr)
-library(shinyBS)
-library(msm)
-library(V8)
-library(shinyWidgets)
-library(data.table)
-library(DT)
-library(zip)
-library(RColorBrewer)
-library(pracma)
-library(heatmaply)
-library(devtools)
 
 
 
