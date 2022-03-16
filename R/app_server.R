@@ -138,7 +138,7 @@ app_server <- function( input, output, session ) {
         if(i %!in% WFshapelist$wfs){
           id_name <- stringr::str_replace_all(i," ","_")
           appendTab("windfarm_Tabs",tabPanel(i,mod_WindFarmFeats_ui(id_name)),select=TRUE)
-          mod_WindFarmFeats_server(id_name,data  = rv)
+          mod_WindFarmFeats_server(id_name,data = rv)
         }
       }
       WFshapelist$wfs <- WFshapes()$NAME
@@ -1101,13 +1101,14 @@ app_server <- function( input, output, session ) {
       openxlsx::writeData(wb,sheet="Cumulative_Output",params$cumultable)
       
       lapply(names(params$bootdata),function(x){
-        openxlsx::addWorksheet(wb,sheetName=paste0(x,"_Boot"))
+        shortnm <- substr(x,1,25)
+        openxlsx::addWorksheet(wb,sheetName=paste0(shortnm,"_Boot"))
         datf <- plyr::ldply(names(params$bootdata[[x]]),function(y){
           df <- data.frame(params$bootdata[[x]][[y]])
           df$Species <- y
           return(df)
         })
-        openxlsx::writeData(wb,sheet=paste0(x,"_Boot"),datf)
+        openxlsx::writeData(wb,sheet=paste0(shortnm,"_Boot"),datf)
       })
       
       

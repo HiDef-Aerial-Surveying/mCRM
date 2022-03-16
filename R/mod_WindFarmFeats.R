@@ -196,7 +196,7 @@ mod_WindFarmFeats_server <- function(id, data){
       })
       
       observe({
-        updateNumericInput(inputId = "numInput_windfarmPars_width",value=get_wf_width(data$WFshapes[data$WFshapes$NAME == nid,]))
+        try(updateNumericInput(inputId = "numInput_windfarmPars_width",value=get_wf_width(data$WFshapes[data$WFshapes$NAME == nid,])))
       })
       
       # --- Create input table for turbine monthly operation parameters
