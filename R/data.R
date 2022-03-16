@@ -46,26 +46,6 @@
 #' }
 "EMOD_OSWFs_WGS84_UK"
 
-#' Scotwind lease areas
-#'
-#' A spatial polygon of Scotwind offshore lease areas
-#' 
-#' @format A spatial polygon dataframe
-#' \describe{
-#'   \item{COUNTRY}{Country that wind farm is associated with (should be UK only)}
-#'   \item{NAME}{The name of the OSWF}
-#'   \item{N_TURBINES}{Number of planned or operational turbines at a site}
-#'   \item{POWER_MW}{Approximate power production of site}
-#'   \item{STATUS}{Legal status of site (Planned, Approved, Production, or Dismantled)}
-#'   \item{YEAR}{Year windfarm went into production}
-#'   \item{COAST_DIST}{Distance to coast of polygon centroid}
-#'   \item{AREA_SQKM}{Total windfarm area in kilometers squared}
-#'   \item{NOTES}{Additional notes}
-#'   \item{Shape_Leng}{Longest length of the polygon}
-#'   \item{Shape_Area}{Area in hectares}
-#' }
-"SCOTWIND_SHAPES"
-
 
 #' Scotwind lease areas merged to EMOD
 #'
@@ -106,18 +86,4 @@
 #' @format A list of sf polylines for all species in the database
 "all_lines"
 
-
-#' Species data with wingspans and lengths
-#'
-#' A dataframe with species names, wingspans and wing lengths
-#'
-#' @format A dataframe
-#' \describe{
-#'   \item{Voous}{Species Voous}
-#'   \item{Common}{Common English name of species}
-#'   \item{Scientific}{Scientific name of species}
-#'   \item{Length}{Mean length of species (cm)}
-#'   \item{Wingspan}{Mean wingspan of species (cm)}
-#' }
-"species_data"
 

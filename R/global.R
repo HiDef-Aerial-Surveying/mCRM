@@ -1,4 +1,5 @@
-#' Global variables for the mCRM
-#' @import ggplot2
-#' @importFrom grDevices colorRampPalette
-#' @importFrom RColorBrewer brewer.pal
+utils::globalVariables(c("defaultSpeciesValues",
+                         "all_lines",
+                         "all_polygons",
+                         "Scotwind_Merged",
+                         "startUpValues"))
