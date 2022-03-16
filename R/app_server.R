@@ -20,6 +20,7 @@
 #' @importFrom purrr walk2
 #' @importFrom plyr ldply
 #' @importFrom reshape2 melt
+#' @importFrom raster shapefile
 #' @importFrom shinyalert shinyalert
 #' @importFrom readxl excel_sheets
 #' @importFrom readxl read_xlsx
@@ -39,19 +40,6 @@
 #' 
 #' 
 app_server <- function( input, output, session ) {
-
-  withConsoleRedirect <- function(containerId, expr) {
-    # Change type="output" to type="message" to catch stderr
-    # (messages, warnings, and errors) instead of stdout.
-    txt <- capture.output(results <- expr, type = "message")
-    if (length(txt) > 0) {
-      insertUI(paste0("#", containerId), where = "beforeEnd",
-               ui = paste0(txt, "\n", collapse = "")
-      )
-    }
-    results
-  }
-  
 
   # ----------------------------------------------------
   # ----         setting session specifics          ----
@@ -76,18 +64,6 @@ app_server <- function( input, output, session ) {
     pitchVsWind_df = startUpValues$turbinePars$pitchVsWind_df,
     rotationVsWind_df = startUpValues$turbinePars$rotationVsWind_df
   )
-  
-
-  # --- Generate temporary paths and folders for storing session's specific data 
-  sessTempOutFolder <- getTempFolderName()
-  path2ShinyOut_Inputs <- file.path("shinyOutputs", sessTempOutFolder, "inputs")
-  path2ShinyOut_Outputs <- file.path("shinyOutputs", sessTempOutFolder, "outputs")
-  path2Outputs_results <- file.path("results", sessTempOutFolder)
-  
-  dir.create(path2ShinyOut_Inputs, recursive = TRUE)
-  dir.create(path2ShinyOut_Outputs, recursive = TRUE)
-  dir.create(path2Outputs_results, recursive = TRUE)
-  
   
   # Map display controls ----------------------------------------------------
 
@@ -935,11 +911,11 @@ app_server <- function( input, output, session ) {
         cumulTab <- outputs %>%
           group_by(Species) %>%
           dplyr::summarise(PrBsum = sum(as.numeric(X6),na.rm=TRUE),
-                           PrBsd = sum.stdevs(as.numeric(X7)),
+                           PrBsd = sum_stdevs(as.numeric(X7)),
                            PoBsum = sum(as.numeric(X8),na.rm=TRUE),
-                           PoBsd = sum.stdevs(as.numeric(X9)),
+                           PoBsd = sum_stdevs(as.numeric(X9)),
                            Osum = sum(as.numeric(X10),na.rm=TRUE),
-                           Osd = sum.stdevs(as.numeric(X11))) %>%
+                           Osd = sum_stdevs(as.numeric(X11))) %>%
           dplyr::rowwise() %>%
           dplyr::mutate(
             'Pre-breeding total' = paste(PrBsum, "\u00B1", round(PrBsd,3)),
@@ -1215,53 +1191,6 @@ app_server <- function( input, output, session ) {
                      options = list(maxItems = 20L)
       )
   })
-  
-  
-  
 
-  
-  # ---------------------------------------------------------
-  #  ----       Session's house-cleaning                  ----
-  # ---------------------------------------------------------
-  
-  # --- Delete temporary folders (& files) created during the current session
-  onStop(function(){
-    #cat("Session stopped\n")
-    unlink(file.path("shinyOutputs", sessTempOutFolder), recursive = TRUE)
-    unlink(path2Outputs_results, recursive = TRUE)
-  })
-  
-  
-  
-  
-  
-  # ----------------------------------------------------------------
-  #  ----              Miscellaneous  Stuff                    ----
-  # ----------------------------------------------------------------
-  
-  # Version updates - describing latest developments/updates implemented in the app
-  observeEvent(input$appvrsn, {
-    showModal(
-      modalDialog(size = "l",
-                  title = h3("Release Notes"),
-                  h4("v0.2.0 - February, 2022"),
-                  p("Updated stochLAB package"),
-                  tags$ul(
-                    tags$li(tags$b("Additions & Updates"), 
-                            tags$ul(
-                              tags$li("Updated to latest version of stochLAB"),
-                            )),
-                    tags$li(tags$b("To-Do List"),
-                            tags$ul(
-                              tags$li("Allow users to upload shapefiles"),
-                            ))
-                  ),
-                  easyClose = TRUE
-      ))
-  }, priority = 10)
-  
-  
-  #observeEvent(input$test,{browser()})
-  
 
 }

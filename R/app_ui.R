@@ -31,7 +31,7 @@ app_ui <- function(request) {
     #title = "Avian Migration CRM",
     
     #tags$li(class = "dropdown", actionLink("appvrsn", label = tags$b(paste0("v",pkgload::pkg_version())), style = "font-size: 19px")), 
-    tags$li(class = "dropdown", a(tags$b(paste0("v",pkgload::pkg_version())), href="https://github.com/HiDef-Aerial-Surveying/mCRM/blob/master/NEWS.md",
+    tags$li(class = "dropdown", a(tags$b(paste0("v",packageVersion("mCRM"))), href="https://github.com/HiDef-Aerial-Surveying/mCRM/blob/master/NEWS.md",
                                   style = "padding-top: 10px; padding-bottom: 10px", target='_blank', id="lbl_newsLink")),
     
     tags$li(class = "dropdown", a(icon('file', "fa-2x"), href='https://hidef-aerial-surveying.github.io/mCRM/', 
@@ -46,13 +46,13 @@ app_ui <- function(request) {
     tags$li(class = "dropdown headerimg", a(img(src = "www/bioConsultSH_Logo_2.png", height = "40px"), href='https://bioconsult-sh.de/en/',
                                   style = "padding-top: 5px; padding-bottom: 5px;", target='_blank', id="lbl_bioConsultLogoLink"),
             style="float: right"),
-    tags$li(class = "dropdown headerimg", a(img(src = "www/HiDef Logo_2.png", height = "40px"), href='https://hidef.bioconsult-sh.de/',
+    tags$li(class = "dropdown headerimg", a(img(src = "www/HiDef_Logo_2.png", height = "40px"), href='https://hidef.bioconsult-sh.de/',
                                   style = "padding-top: 5px; padding-bottom: 5px;", target='_blank', id="lbl_hiDefLogoLink"),
             style="float: right"),
     tags$li(class = "dropdown headerimg", a(img(src = "www/DMP_logo_1.png", height = "40px"), href='https://www.dmpstats.com',
                                   style = "padding-top: 5px; padding-bottom: 5px", target='_blank', id="lbl_dmpLogoLink"), 
             style="float: right"),
-    tags$li(class = "dropdown headerimg", a(img(src = "www/MS Logo Linear-01_2.png", height = "40px"), href='https://www.gov.scot/Topics/marine',
+    tags$li(class = "dropdown headerimg", a(img(src = "www/MS_Logo_Linear-01_2.png", height = "40px"), href='https://www.gov.scot/Topics/marine',
                                   style = "padding-top: 10px; padding-bottom: 10px;", target='_blank', id="lbl_marineScotlandLink"),
             style="float: right")  
   )
@@ -215,7 +215,7 @@ app_ui <- function(request) {
                           inputId =  "button_generate_scenarios",
                           color = "success",
                           style = "material-circle",
-                          icon = icon("gear"),
+                          icon = icon("cog"),
                           size = "lg"
                         ) %>%
                           bsplus::bs_embed_tooltip(

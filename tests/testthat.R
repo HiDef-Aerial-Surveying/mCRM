@@ -1,4 +1,4 @@
-library(testthat)
-library(mCRM)
+#library(testthat)
+#library(mCRM)
 
-test_check("mCRM")
+#test_check("mCRM")

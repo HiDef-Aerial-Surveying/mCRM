@@ -123,7 +123,7 @@ truncNormPars_densPlots <- function(mu, stdev, lower = -Inf, upper = Inf, fill="
 
 #' Sum the standard deviations
 #' @export
-sum.stdevs <- function(x){
+sum_stdevs <- function(x){
   return(sqrt(sum(sapply(x,function(x) x^2),na.rm=T)))
 }
 
