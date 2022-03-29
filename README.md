@@ -24,7 +24,8 @@ devtools::install_github("HiDef-Aerial-Surveying/mCRM")
 Once installed as a package, the mCRM can be run like this:
 
 ``` r
-mCRM::runApp()
+library(mCRM)  ##Ensure this is run so all mCRM data are loaded to your environment
+mCRM::run_app()
 ```
 
 ## mCRM usage (online)

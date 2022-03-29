@@ -4,9 +4,6 @@
 ### the usethis package converts to rdas for use in the app
 library(tidyverse)
 
-defaultSpeciesValues <- readxl::read_xlsx("mCRM_bird_parameter_Defaults v2.0.xlsx")
-usethis::use_data(defaultSpeciesValues,overwrite = T)
-
 #### Start up values for the app
 
 startUpValues <- list(
