@@ -1,8 +1,7 @@
 ##################################
 ### Use this script to build the rda tables in the data folder
 ### the usethis package converts to rdas for use in the app
-
-
+library(tidyverse)
 
 defaultSpeciesValues <- readxl::read_xlsx("data-raw/mCRM_bird_parameter_Defaults v2.0.xlsx")
 
@@ -38,7 +37,7 @@ for(i in 1:nrow(defaultSpeciesValues)){
 
 
 
-usethis::use_data(defaultSpeciesValues,overwrite = T)
+usethis::use_data(defaultSpeciesValues,overwrite = T,internal = T)
 
 
 #### Start up values for the app
