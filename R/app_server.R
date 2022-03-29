@@ -922,7 +922,7 @@ app_server <- function( input, output, session ) {
             'Post-breeding total' = paste(PoBsum, "\u00B1", round(PoBsd,3)),
             'Other total' = paste(Osum, "\u00B1", round(Osd,3)),
             'Total' = paste(sum(dplyr::c_across(c(PrBsum,PoBsum,Osum))),"\u00B1",
-                            round(sum.stdevs(dplyr::c_across(c(PrBsd,PoBsd,Osd))),3))
+                            round(sum_stdevs(dplyr::c_across(c(PrBsd,PoBsd,Osd))),3))
           ) %>%
           dplyr::select(-PrBsum,-PrBsd,-PoBsum,-PoBsd,-Osum,-Osd)
         
