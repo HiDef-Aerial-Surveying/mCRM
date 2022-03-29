@@ -46,7 +46,8 @@ app_server <- function( input, output, session ) {
   # ----------------------------------------------------
   
   # --- session's "global" Variables
-
+  defaultSpeciesValues <- mCRM::defaultSpeciesValues
+  
   # --- Initiate session's reactive variables
   WF_shape_choice <- reactive({input$selectInput_wfshape_builtin_or_userinput})
   rv <- reactiveValues(
