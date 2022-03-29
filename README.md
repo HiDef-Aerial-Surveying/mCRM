@@ -31,7 +31,7 @@ mCRM::run_app()
 ## mCRM usage (online)
 
 You can access the mCRM on shinyapps.io:
-<https://hidefdevo.shinyapps.io/mCRM/>
+<https://hidefsurveying.shinyapps.io/mCRM/>
 
 ## Using the interface
 
@@ -41,7 +41,7 @@ Instructions on running the tool can be found at
 ## Reporting bugs
 
 If you spot something out of place, please report it here:
-[https://hidefdevo.shinyapps.io/mCRM/issues](https://hidefdevo.shinyapps.io/mCRM/)
+<https://github.com/HiDef-Aerial-Surveying/mCRM/issues>
 
 ## Information
 

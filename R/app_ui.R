@@ -28,9 +28,7 @@ app_ui <- function(request) {
   header <- dashboardHeader(
     
     titleWidth =270,
-    #title = "Avian Migration CRM",
-    
-    #tags$li(class = "dropdown", actionLink("appvrsn", label = tags$b(paste0("v",pkgload::pkg_version())), style = "font-size: 19px")), 
+  
     tags$li(class = "dropdown", a(tags$b(paste0("v",packageVersion("mCRM"))), href="https://github.com/HiDef-Aerial-Surveying/mCRM/blob/master/NEWS.md",
                                   style = "padding-top: 10px; padding-bottom: 10px", target='_blank', id="lbl_newsLink")),
     
