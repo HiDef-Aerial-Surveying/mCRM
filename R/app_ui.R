@@ -24,7 +24,6 @@
 app_ui <- function(request) {
   
   # Dashboard header ------------------------------------------------------
-  defaultSpeciesValues <- mCRM::defaultSpeciesValues
   
   header <- dashboardHeader(
     
