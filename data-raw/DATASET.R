@@ -26,7 +26,7 @@ startUpValues <- list(
 )
 
 
-usethis::use_data(startUpValues,overwrite = T)
+usethis::use_data(startUpValues,overwrite = T,internal = T)
 
 
 # template data sets
