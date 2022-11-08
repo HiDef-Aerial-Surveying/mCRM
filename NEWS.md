@@ -4,6 +4,13 @@
 * Documentation updated for local install
 * Features to add:
   * Upload custom user shapefiles for migration
+  * Change to average wind farm width
+  * Create check for turbine parameters
+  * fix axis labels on biometric plots
+  * Output flight lines? 
+  * Improve web-hosting for speed with online version
+  * Upload flight lines
+  * fix error in running as local app (error in scenario...)
 
 # mCRM 0.3.0
 

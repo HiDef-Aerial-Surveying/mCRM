@@ -102,6 +102,8 @@ The estimated number of collisions per season are visualized as data tables and 
 The tool itself is simply a wrapper around the `mig_stoch_crm()` function in the `stochLAB` library. The stochLAB library can either be installed by: 
 `devtools::install_github("HiDef-Aerial-Surveying/stochLAB")` or by `install.packages("stochLAB")`.  
 
+More information on using this function can be found on [the Github  site](https://www.github.com/hidef-aerial-surveying/stochLAB)
+
 Below is an example of how you might run the tool for multiple scenarios.  
 
 ```r
@@ -224,16 +226,16 @@ for(i in 1:nrow(CountDat)){
     ## Send outputs to matrix
     outputs[i,1] <- spp_name
     outputs[i,2] <- wf_name
-    outputs[i,3] <- paste(round(mean(outs[,1],na.rm=T),3), "\u00B1", round(sd(outs[,1],na.rm=T),3))
-    outputs[i,4] <- paste(round(mean(outs[,2],na.rm=T),3), "\u00B1", round(sd(outs[,2],na.rm=T),3))
-    outputs[i,5] <- paste(round(mean(outs[,3],na.rm=T),3), "\u00B1", round(sd(outs[,3],na.rm=T),3))
+    outputs[i,3] <- paste(round(mean(outs$collisions[,1],na.rm=T),3), "\u00B1", round(sd(outs$collisions[,1],na.rm=T),3))
+    outputs[i,4] <- paste(round(mean(outs$collisions[,2],na.rm=T),3), "\u00B1", round(sd(outs$collisions[,2],na.rm=T),3))
+    outputs[i,5] <- paste(round(mean(outs$collisions[,3],na.rm=T),3), "\u00B1", round(sd(outs$collisions[,3],na.rm=T),3))
     ## Set raw values to matrix as well so they can be used for cumulative assessments
-    outputs[i,6] <- round(mean(outs[,1],na.rm=T),3)
-    outputs[i,7] <- round(sd(outs[,1],na.rm=T),3)  
-    outputs[i,8] <- round(mean(outs[,2],na.rm=T),3) 
-    outputs[i,9] <- round(sd(outs[,2],na.rm=T),3) 
-    outputs[i,10] <- round(mean(outs[,3],na.rm=T),3)
-    outputs[i,11] <- round(sd(outs[,3],na.rm=T),3)
+    outputs[i,6] <- round(mean(outs$collisions[,1],na.rm=T),3)
+    outputs[i,7] <- round(sd(outs$collisions[,1],na.rm=T),3)  
+    outputs[i,8] <- round(mean(outs$collisions[,2],na.rm=T),3) 
+    outputs[i,9] <- round(sd(outs$collisions[,2],na.rm=T),3) 
+    outputs[i,10] <- round(mean(outs$collisions[,3],na.rm=T),3)
+    outputs[i,11] <- round(sd(outs$collisions[,3],na.rm=T),3)
   
 }
 

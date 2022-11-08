@@ -6,4 +6,5 @@ label.help <- function(label, id){
 
 #' Negating the '%in%' function for use in tools.
 #' @export
+#' @noRd
 `%!in%` <- Negate(`%in%`)

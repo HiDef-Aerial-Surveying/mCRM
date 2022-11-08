@@ -7,16 +7,19 @@
 GetSampleProp(maskedlines, samplesize, WFarea)
 }
 \arguments{
-\item{maskedlines}{An sf object. The full set of lines sampled within the migration corridor for a species}
+\item{maskedlines}{An sf object. The full set of lines sampled within the 
+migration corridor for a species}
 
-\item{samplesize}{An integer. The number of lines to sample from the full set of lines}
+\item{samplesize}{An integer. The number of lines to sample from the full 
+set of lines}
 
 \item{WFarea}{An sf object. The polygon of the wind farm area of interest}
 }
 \value{
-a numeric value representing the proportion of lines that overlap the specific wind farm area
+a numeric value representing the proportion of lines that overlap 
+the specific wind farm area
 }
 \description{
-A function to sample n number of lines from a full set of polylines and get the proportion of those linee
- that intersect the windfarm
+A function to sample n number of lines from a full set of 
+polylines and get the proportion of those lines that intersect the windfarm.
 }
