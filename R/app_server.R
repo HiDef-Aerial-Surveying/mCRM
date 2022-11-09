@@ -873,19 +873,20 @@ app_server <- function( input, output, session ) {
               
               ## Send outputs to reactive Values list so they can be accessed
               mcrmOut$mCRM_boots_ls[[wf_name]][[spp_name]] <- outs
+              outs$collisions <- data.frame(outs$collisions)
               ## Send outputs to matrix
               outputs[i,1] <- spp_name
               outputs[i,2] <- wf_name
-              outputs[i,3] <- paste(round(mean(outs[,1],na.rm=T),3), "\u00B1", round(sd(outs[,1],na.rm=T),3))
-              outputs[i,4] <- paste(round(mean(outs[,2],na.rm=T),3), "\u00B1", round(sd(outs[,2],na.rm=T),3))
-              outputs[i,5] <- paste(round(mean(outs[,3],na.rm=T),3), "\u00B1", round(sd(outs[,3],na.rm=T),3))
+              outputs[i,3] <- paste(round(mean(outs$collisions[,1],na.rm=T),3), "\u00B1", round(sd(outs$collisions[,1],na.rm=T),3))
+              outputs[i,4] <- paste(round(mean(outs$collisions[,2],na.rm=T),3), "\u00B1", round(sd(outs$collisions[,2],na.rm=T),3))
+              outputs[i,5] <- paste(round(mean(outs$collisions[,3],na.rm=T),3), "\u00B1", round(sd(outs$collisions[,3],na.rm=T),3))
               ## Set raw values to matrix as well so they can be used for cumulative assessments
-              outputs[i,6] <- round(mean(outs[,1],na.rm=T),3)
-              outputs[i,7] <- round(sd(outs[,1],na.rm=T),3)  
-              outputs[i,8] <- round(mean(outs[,2],na.rm=T),3) 
-              outputs[i,9] <- round(sd(outs[,2],na.rm=T),3) 
-              outputs[i,10] <- round(mean(outs[,3],na.rm=T),3)
-              outputs[i,11] <- round(sd(outs[,3],na.rm=T),3)
+              outputs[i,6] <- round(mean(outs$collisions[,1],na.rm=T),3)
+              outputs[i,7] <- round(sd(outs$collisions[,1],na.rm=T),3)  
+              outputs[i,8] <- round(mean(outs$collisions[,2],na.rm=T),3) 
+              outputs[i,9] <- round(sd(outs$collisions[,2],na.rm=T),3) 
+              outputs[i,10] <- round(mean(outs$collisions[,3],na.rm=T),3)
+              outputs[i,11] <- round(sd(outs$collisions[,3],na.rm=T),3)
               
             },
             warning = function(warn){
