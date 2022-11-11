@@ -62,8 +62,11 @@ get_wf_width <- function(polyg){
   vertices <- polyg@polygons[[1]]@Polygons[[1]]@coords
   dists <- geosphere::distm(vertices, fun = geosphere::distGeo)
   #Get the maximum distance between vertices, which represents the width of the windfarm
-  maxDist <- round(dists[which(dists==max(dists))][1]/1000,3)
-  return(maxDist)
+  #maxDist <- round(dists[which(dists==max(dists))][1]/1000,3)
+  #### Switch to mean distance (nov 2022) as per suggestion by M Trinder
+  meanDist <- round(mean(dists[dists>0])/1000,3)
+  #return(maxDist)
+  return(meanDist)
 }
 
 
