@@ -116,7 +116,7 @@ app_ui <- function(request) {
                 
                              uiOutput("Windfarm_Shapes"),
                              
-                             uiOutput("selectInput_custom_Windfarm_name_header") %>% withSpinner(color="#0dc5c1"),
+                             #uiOutput("selectInput_custom_Windfarm_name_header") %>% withSpinner(color="#0dc5c1"),
                              
                              #actionButton("test","test", class="btn-lg btn-success"),
                              

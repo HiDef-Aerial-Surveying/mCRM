@@ -202,7 +202,7 @@ mod_WindFarmFeats_server <- function(id, data){
       # --- Create input table for turbine monthly operation parameters
       output$hotInput_turbinePars_monthOps <- renderDT({
         datatable(data$turbinePars_monthOps_df,
-                  editable='all',
+                  editable=list(target = "all", disable = list(columns = c(0))),   #'all',
                   options=list(dom='t',scrollX = TRUE))
       })
       

@@ -49,9 +49,11 @@ app_server <- function( input, output, session ) {
   
   # --- Initiate session's reactive variables
   WF_shape_choice <- reactive({input$selectInput_wfshape_builtin_or_userinput})
+  
   rv <- reactiveValues(
     WFshapes = NULL,
     WF_shape_choice = NULL,
+    customWFshapes = NULL,
     WFsSelected = NULL,
     turbinePars_monthOps_df = data.frame(
       matrix(
@@ -81,7 +83,7 @@ app_server <- function( input, output, session ) {
     if(WF_shape_choice == "existWindFarms"){
       Scotwind_Merged[Scotwind_Merged$NAME %in% input$selectInput_builtin_wfList,]  
     }else if(WF_shape_choice == "customWindFarms"){
-      WFshapes_custom()[WFshapes_custom()$NAME %in% input$selectInput_custom_wf_header,]
+      rv$customWFshapes[rv$customWFshapes$NAME %in% input$selectInput_custom_wf_header,]
     }
   })
   
@@ -972,35 +974,43 @@ app_server <- function( input, output, session ) {
         
         output$Report_Download <- renderUI({
           tagList(
-            column(12,
-                   shinyWidgets::downloadBttn(
-                     "dwnld_Report",
-                     label = "Generate report",
-                     color = "primary",
-                     style = "bordered",
-                     size = "sm"
-                   ) %>%
-                     bsplus::bs_embed_tooltip(
-                       title = "Generate report", 
-                       placement = "bottom")
-                  ))
+            fluidRow(
+              column(12,
+                     shinyWidgets::downloadBttn(
+                       "dwnld_Report",
+                       label = "Generate report",
+                       color = "primary",
+                       style = "bordered",
+                       size = "sm",
+                       block = TRUE
+                     ) %>%
+                       bsplus::bs_embed_tooltip(
+                         title = "Generate report", 
+                         placement = "bottom")
+              ),style="margin-bottom:10px"
+            )
+            )
             
         }) ## End output$Simulation_Download
         
         output$Download_Tables <- renderUI({
           tagList(
-            column(12,
-                   shinyWidgets::downloadBttn(
-                     "dwnld_Tables",
-                     label = "Download tables",
-                     color = "primary",
-                     style = "bordered",
-                     size = "sm"
-                   ) %>%
-                     bsplus::bs_embed_tooltip(
-                       title = "Download output tables", 
-                       placement = "bottom")
-            ))
+            fluidRow(
+              column(12,
+                     shinyWidgets::downloadBttn(
+                       "dwnld_Tables",
+                       label = "Download tables",
+                       color = "primary",
+                       style = "bordered",
+                       size = "sm",
+                       block = TRUE
+                     ) %>%
+                       bsplus::bs_embed_tooltip(
+                         title = "Download output tables", 
+                         placement = "bottom")
+              )
+            )
+            )
           
         }) ## End output$Download_Tables
 
@@ -1111,8 +1121,24 @@ app_server <- function( input, output, session ) {
       })
     }else if(WF_shape_choice == "customWindFarms"){
       output$Windfarm_Shapes <- renderUI({
-        shiny::fileInput("custom_WF_shapes", "Choose polygon shape file (ensure a NAME field exists, select all files)",
-                  multiple = TRUE, accept=c(".shp",".dbf",".sbn",".sbx",".shx",".prj"))
+        tagList(
+          shiny::fileInput("custom_WF_shapes", "Choose polygon shape file (ensure a NAME field exists, select all files)",
+                           multiple = TRUE, accept=c(".shp",".dbf",".sbn",".sbx",".shx",".prj")),
+          
+          shinyWidgets::actionBttn(
+            "btn_load_custom_WF_shape",
+            label = "Load shapefile",
+            icon = icon("cog"),
+            style="stretch",
+            color="danger",
+            no_outline=FALSE
+          )%>%
+            bsplus::bs_embed_tooltip(
+              title = "Select ALL files associated with the shapefile,
+              create a column called 'NAME' with the name of the wind farm.", 
+              placement = "bottom"),
+          uiOutput("selectInput_custom_Windfarm_name_header")
+        )
         })
     }
     
@@ -1121,23 +1147,26 @@ app_server <- function( input, output, session ) {
   ### Some code borrowed from:  https://github.com/richpauloo/shp_oswcr/blob/master/mod_shpPoly.R
   
   userShp <- reactive({
-    #(need(input$custom_WF_shapes),message=FALSE)
     input$custom_WF_shapes
   })
   
-  WFshapes_custom <- reactive({
+  ### Load shapes button for custom wind farm polygons
+  observeEvent(input$btn_load_custom_WF_shape, {
+    
     req(input$custom_WF_shapes)
-    if(!is.data.frame(userShp())) return()
     infiles <- userShp()$datapath
     dirn <- unique(dirname(infiles))
     outfiles <- file.path(dirn, userShp()$name)
     purrr::walk2(infiles, outfiles, ~file.rename(.x, .y))
     shpnm <- outfiles[grep(userShp()$name,pattern=".shp$")]
-    x <- try(raster::shapefile(shpnm))
-    if("NAME" %!in% names(x)){
+    
+    tryCatch({
+      x <- validate_shape(shpnm,rv)
+    },
+    error = function(err){
       shinyalert::shinyalert(
         title = "Error",
-        text = "'NAME' column is not available in the shapefile, please ensure unique names are specified in a NAME field",
+        text = err$message,  
         size = "s", 
         closeOnEsc = TRUE,
         closeOnClickOutside = FALSE,
@@ -1151,47 +1180,62 @@ app_server <- function( input, output, session ) {
         imageUrl = "",
         animation = TRUE
       )
+    }
+    )
+    
+  })
+  
+  
+  ######## Validate custom shape function ####
+  validate_shape <- function(shpnm,rv){
+    tryCatch({
+      x <- raster::shapefile(shpnm)
+    },
+    error = function(err){
+      stop(paste0("Error opening shapefile: ",err$message,". Check to ensure
+                      all files associated with the .shp have been selected. 
+                      E.G., the *.dbf, *.shp, *.shx, and *.prj files at minimum"))
+    })
+    
+    if("NAME" %!in% names(x)){
+      stop("'NAME' column is not available in the shapefile, please ensure unique names are specified in a NAME field")
     }else{
-      
       if(is.na(sp::proj4string(x))){
         valid_proj <- FALSE
       } else {
         valid_proj <- TRUE
       }
-      
       if(valid_proj){
         x <- sp::spTransform(x,sf::st_crs(4326)$proj4string)
+        output$selectInput_custom_Windfarm_name_header <- renderUI({
+          selectizeInput("selectInput_custom_wf_header",
+                         label = "Select wind farms",
+                         choices = x$NAME,
+                         options = list(maxItems = 20L)
+          )
+        })
+        rv$customWFshapes <<- x
+        
         return(x)
       }else{
-        shinyalert::shinyalert(
-          title = "Error",
-          text = "Shapefile does not have a valid projection",
-          size = "s", 
-          closeOnEsc = TRUE,
-          closeOnClickOutside = FALSE,
-          html = FALSE,
-          type = "error",
-          showConfirmButton = TRUE,
-          showCancelButton = FALSE,
-          confirmButtonText = "OK",
-          confirmButtonCol = "#AEDEF4",
-          timer = 0,
-          imageUrl = "",
-          animation = TRUE
-        )
+        stop("Shapefile does not have a valid projection")
       }
-      
     }
-  })
+  }
   
   
-  output$selectInput_custom_Windfarm_name_header <- renderUI({
-      selectizeInput("selectInput_custom_wf_header",
-                     label = "Select wind farms",
-                     choices = WFshapes_custom()$NAME,
-                     options = list(maxItems = 20L)
-      )
-  })
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+
 
 
 }
