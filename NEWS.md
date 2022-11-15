@@ -1,15 +1,16 @@
+# mCRM 0.4.1
+
 # mCRM 0.4.0
+
 * Documentation on website updated to include line sampling explanation
 * Changed to using average wind farm width
 * Fixed error with local app running
 * Improved uploading of wind farm polygons
 * Features to add:
-  * Create check for turbine parameters
-  * fix axis labels on biometric plots
-  * Output flight lines? 
+  * Output proportion of at-risk flight lines
   * Improve web-hosting for speed with online version
-  * Upload flight lines
-  * Have visual interface repopulate with data from scenarios
+  * Upload flight lines tool
+  
   
 
 # mCRM 0.3.1
@@ -20,8 +21,7 @@
   * Upload custom user shapefiles for migration
   * Change to average wind farm width
   * Create check for turbine parameters
-  * fix axis labels on biometric plots
-  * Output flight lines? 
+  * Output proportion of at-risk flight lines
   * Improve web-hosting for speed with online version
   * Upload flight lines
   * fix error in running as local app (error in scenario...)

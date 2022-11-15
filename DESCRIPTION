@@ -1,6 +1,6 @@
 Package: mCRM
 Title: Avian Migration Collision Risk Model
-Version: 0.4.0
+Version: 0.4.1
 Authors@R: person('HiDef Aerial Surveying Ltd.', '', email = 'grant.humphries@hidefsurveying.co.uk', role = c('cre', 'aut'))
 Description: This application is an extension of the stochastic collision risk model focused on migratory birds.
 License: MIT + file LICENSE
