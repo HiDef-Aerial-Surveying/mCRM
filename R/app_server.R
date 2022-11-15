@@ -379,6 +379,8 @@ app_server <- function( input, output, session ) {
     names(Population_estimates) <- c("Wind farm", "Species")
     Population_estimates$Estimate <- NA
     Population_estimates$EstimateSD <- NA
+    ### Add mean proportion of lines selected
+    Population_estimates$Line_Proportion <- NA
     
     withProgress(message = "Generating population estimates",value=0,{
       for(k in 1:nrow(Population_estimates)){
@@ -399,12 +401,13 @@ app_server <- function( input, output, session ) {
         })
         Population_estimates$Estimate[k] <- ceiling(mean(Estimates,na.rm=TRUE))
         Population_estimates$EstimateSD[k] <- ceiling(sd(Estimates,na.rm=TRUE))
+        Population_estimates$Line_Proportion[k] <- round(mean(Estimates,na.rm=TRUE)/popSizemn, 3)
       }
     })
     
     output$hotInput_output_population_scenarios <- renderRHandsontable(
       Population_estimates %>%
-        rhandsontable(selectCallback = TRUE,rowHeaders=NULL, colHeaders = c("Wind farm","Species", "Population estimate","Population estimate (SD)")) %>%
+        rhandsontable(selectCallback = TRUE,rowHeaders=NULL, colHeaders = c("Wind farm","Species", "Population estimate","Population estimate (SD)","Proportion at-risk flight lines")) %>%
         hot_cols() %>%
         hot_table(highlightCol = TRUE, highlightRow = TRUE) %>%
         hot_context_menu(allowRowEdit = TRUE, allowColEdit = FALSE)
@@ -447,7 +450,7 @@ app_server <- function( input, output, session ) {
   
   ScenariosData <- reactive({
     Df <- hot_to_r(input$hotInput_output_population_scenarios)
-    names(Df) <- c("Wind farm","Species", "Population estimate","Population estimate (SD)")
+    names(Df) <- c("Wind farm","Species", "Population estimate","Population estimate (SD)","Proportion at-risk flight lines")
     return(Df)
   })
   

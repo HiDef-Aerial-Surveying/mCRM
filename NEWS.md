@@ -9,6 +9,7 @@
   * Output flight lines? 
   * Improve web-hosting for speed with online version
   * Upload flight lines
+  * Have visual interface repopulate with data from scenarios
   
 
 # mCRM 0.3.1

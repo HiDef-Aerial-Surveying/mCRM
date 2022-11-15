@@ -48,6 +48,16 @@ The inputs are filled with default values but can be updated based on specifics 
 
 To update the data table, simply double click on it and it will open in editing mode. Hit ***CTRL + Enter*** to finish editing. 
 
+***NOTE*** Although migration collision risk is only calculated assuming birds travel 
+through a site once (not multiple times over months), monthly assignments are used 
+to take an average of the available wind speed in the site (i.e., average activity of 
+turbine blades). I.E., if the migratory period lies between March and June, then the 
+average wind availability for the turbines is used in the calculation of collision risk. 
+This value has negligible impact on the overall collision risk when compared to other 
+elements (e.g., avoidance rates), but was incorporated to keep with conventions in the 
+standard stochastic collision risk model. 
+
+
 
 ## Step 2: Species features
 
