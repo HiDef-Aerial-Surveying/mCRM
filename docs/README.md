@@ -148,6 +148,15 @@ library(rgeos)
 library(sp)
 library(raster)
 library(ggplot2)
+library(foreach)
+
+GetSampleProp <- function(maskedlines,samplesize,WFarea){
+  testsample <- sample(length(maskedlines[[1]]),samplesize,replace=T)
+  testsample <- maskedlines[[1]][testsample]
+  tt <- testsample[WFarea]
+  return(tt)
+}
+
 
 load("data/all_polygons.rda")
 load("data-raw/Non_UK_Points.Rda")
@@ -162,6 +171,10 @@ Non_UK_points <- sf::st_transform(Non_UK_points,st_crs(32630)$proj4string)
 
 NWeurope <- sf::read_sf("data-raw/Europe_coastline_poly.shp")
 NWeurope <- sf::st_transform(NWeurope,st_crs(32630)$proj4string)
+
+WFarea <- sf::read_sf("data/Wind_Farm_Area_East.shp")
+WFarea <- sf::st_transform(WFarea,sf::st_crs(32630)$proj4string)
+
 
 all_lines <- list()
 
@@ -210,6 +223,21 @@ for(j in 1:length(all_polygons)){
     print(paste("WARNING!!!", i))
   }
 }
+
+
+maskedLines <- all_lines$Anas_crecca
+
+
+boot.iters <- 1000
+samplesize <- 1000
+
+sampleproportions <- foreach(i=1:boot.iters,.combine='c') %do%{
+  tt <- GetSampleProp(maskedlines,samplesize,WFarea)
+  return(length(tt)/samplesize)
+}
+
+
+
 
 
 ```

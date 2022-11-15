@@ -1,5 +1,10 @@
 # mCRM 0.4.1
-
+* Tool now outputs the proportion of at-risk flight lines
+* Example function for creating migration lines added to guide
+* Features to add:
+  * Improve web-hosting for speed with online version
+  * Upload flight lines tool
+  
 # mCRM 0.4.0
 
 * Documentation on website updated to include line sampling explanation
@@ -11,8 +16,6 @@
   * Improve web-hosting for speed with online version
   * Upload flight lines tool
   
-  
-
 # mCRM 0.3.1
 
 * Minor patch to fix `sum_stdev` function
