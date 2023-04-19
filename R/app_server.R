@@ -633,7 +633,7 @@ app_server <- function( input, output, session ) {
     }
     
     ### Check names on count data / population estimates
-    CTnames <- c("Wind farm","Species", "Population estimate","Population estimate (SD)")
+    CTnames <- c("Wind farm","Species", "Population estimate","Population estimate (SD)","Proportion at-risk flight lines")
     if(!identical(names(list_all[[3]]),CTnames)){
       shinyalert::shinyalert(
         title = "Error",
@@ -846,6 +846,8 @@ app_server <- function( input, output, session ) {
           dwntm <- DTmn %>% left_join(DTsd,by="variable")
           names(dwntm) <- c("month","mean","sd")
           
+          
+          #browser()
           ### Make use of built in error handling in the stochLAB package
           ### Will output console errors as a notification
             tryCatch({
@@ -894,10 +896,10 @@ app_server <- function( input, output, session ) {
               outputs[i,11] <- round(sd(outs$collisions[,3],na.rm=T),3)
               
             },
-            warning = function(warn){
-              mess <- paste0("error in scenario ",spp_name," x ",wf_name,": ",warn$message)
-              showNotification(mess,type='warning',duration = NULL)
-            },
+            #warning = function(warn){
+            #  mess <- paste0("warning in scenario ",spp_name," x ",wf_name,": ",warn$message)
+            #  showNotification(mess,type='warning',duration = NULL)
+            #},
             error = function(err){
               mess <- paste0("error in scenario ",spp_name," x ",wf_name, ": ",err$message)
               showNotification(mess,type='err',duration = NULL)
