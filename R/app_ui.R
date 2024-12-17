@@ -47,9 +47,9 @@ app_ui <- function(request) {
     tags$li(class = "dropdown headerimg", a(img(src = "www/HiDef_Logo_2.png", height = "40px"), href='https://hidef.bioconsult-sh.de/',
                                   style = "padding-top: 5px; padding-bottom: 5px;", target='_blank', id="lbl_hiDefLogoLink"),
             style="float: right"),
-    tags$li(class = "dropdown headerimg", a(img(src = "www/DMP_logo_1.png", height = "40px"), href='https://www.dmpstats.com',
-                                  style = "padding-top: 5px; padding-bottom: 5px", target='_blank', id="lbl_dmpLogoLink"), 
-            style="float: right"),
+    #tags$li(class = "dropdown headerimg", a(img(src = "www/DMP_logo_1.png", height = "40px"), href='https://www.dmpstats.com',
+    #                              style = "padding-top: 5px; padding-bottom: 5px", target='_blank', id="lbl_dmpLogoLink"), 
+    #       style="float: right"),
     tags$li(class = "dropdown headerimg", a(img(src = "www/MS_Logo_Linear-01_2.png", height = "40px"), href='https://www.gov.scot/Topics/marine',
                                   style = "padding-top: 10px; padding-bottom: 10px;", target='_blank', id="lbl_marineScotlandLink"),
             style="float: right")  
