@@ -52,10 +52,10 @@ mod_WindFarmFeats_ui <- function(id){
         # --- Width
         numericInput(width = "85%", 
                      inputId = ns("numInput_windfarmPars_width"), 
-                     label = label.help("Width (Km)", ns("lbl_windfarmWidth")), #"Width (Km)", 
+                     label = label.help("Mean Width (Km)", ns("lbl_windfarmWidth")), #"Width (Km)", 
                      value = startUpValues$windFarmPars$windfarmPars_width, min = 1, step = 1), 
         shinyBS::bsTooltip(id = ns("lbl_windfarmWidth"), 
-                           title = paste0("The wind farm width"),
+                           title = paste0("The mean wind farm width in x and y directions"),
                            options = list(container = "body"), placement = "right", trigger = "hover"),
         
         # --- % upwind flights
