@@ -5,7 +5,7 @@ account: blackbawks
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 5328132
-bundleId: 9466986
+bundleId: 9534531
 url: https://blackbawks.shinyapps.io/mCRM/
 asMultiple: FALSE
 asStatic: FALSE

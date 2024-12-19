@@ -28,15 +28,25 @@ To delete a windfarm from the list, simply click on it and hit DELETE on your ke
 
 ### Using a custom shapefile
 
+<img src='images/Sample_WFs.png' align="center"/>
+
+<img src='images/Sample_WF_tables.png' align="center"/>
+
 First, create a polygon shapefile that has a NAME field. Every polygon in your shapefile should have a UNIQUE identifier in the NAME field.  
 
-<img src='images/Windfarm_Select_Custom_Shapes.png' align="center"/>  
-
+<img src='images/Custom_Select.png' align="center"/>  
 
 Select the dropdown option for "custom windfarms" and then click "Browse".  
 ***Ensure that you select all the files associated with the shapefile*** 
 
-Follow the steps as above to select wind farms and then update the tab list.  
+<img src='images/LoadSHP.png' align="center"/>
+
+<img src='images/WFnames.png' align="center"/>
+
+Click on the Load Shapefile button to bring up the new dropdown list with the new windfarm names.
+
+Click on Update Windfarm List and the tabs with the windfarm data will be generated.
+
 
 ### Wind farm parameters
 
@@ -72,7 +82,6 @@ Select species and click on the "update species list" button.  This will generat
 Using the toggles for each species, you can select which migratory periods will be modelled. The migratory pathways are visualized in the right-hand map which shows how the pathways overlap with your chosen windfarms. 
 
 <img src='images/Migratory_period_select.png' align="center"/>  
-
 
 <img src='images/Species_parameters.png' align="center"/>  
 

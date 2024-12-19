@@ -1,6 +1,7 @@
 #' @param request Internal parameter for `{shiny}`. 
 #'     DO NOT REMOVE.
 #' @import shiny
+#' @import shinyjs
 #' @import shinydashboard
 #' @import shinycssloaders
 #' @import shinyBS
@@ -34,22 +35,19 @@ app_ui <- function(request) {
     
     tags$li(class = "dropdown", a(icon('file', "fa-2x"), href='https://hidef-aerial-surveying.github.io/mCRM/', 
                                   style = "padding-top: 10px; padding-bottom: 10px", target='_blank', id="lbl_guideLink")),
-    tags$li(class = "dropdown", a(icon('video', "fa-2x"), href='#', 
+    tags$li(class = "dropdown", a(icon('video', "fa-2x"), href='https://youtu.be/Q2ggiQXxXzE', 
                                   style = "padding-top: 10px; padding-bottom: 10px", target='_blank', id="lbl_videoLink")),
     tags$li(class = "dropdown", a(icon('github', "fa-2x"), href='https://github.com/HiDef-Aerial-Surveying/mCRM', 
                                   style = "padding-top: 10px; padding-bottom: 10px", target='_blank', id="lbl_codeLink")),
     tags$li(class = "dropdown", a(icon('bug', "fa-2x"), href='https://github.com/HiDef-Aerial-Surveying/mCRM/issues', #exclamation-circle
                                   style = "padding-top: 10px; padding-bottom: 10px", target='_blank', id="lbl_issuesLink")),
     
-    tags$li(class = "dropdown headerimg", a(img(src = "www/bioConsultSH_Logo_2.png", height = "40px"), href='https://bioconsult-sh.de/en/',
-                                  style = "padding-top: 5px; padding-bottom: 5px;", target='_blank', id="lbl_bioConsultLogoLink"),
+    tags$li(class = "dropdown headerimg", a(img(src = "www/blackbawks.png", height = "40px"), href='https://blackbawks.net',
+                                  style = "padding-top: 5px; padding-bottom: 5px;", target='_blank', id="lbl_blackbawksLogoLink"),
             style="float: right"),
     tags$li(class = "dropdown headerimg", a(img(src = "www/HiDef_Logo_2.png", height = "40px"), href='https://hidef.bioconsult-sh.de/',
                                   style = "padding-top: 5px; padding-bottom: 5px;", target='_blank', id="lbl_hiDefLogoLink"),
             style="float: right"),
-    tags$li(class = "dropdown headerimg", a(img(src = "www/DMP_logo_1.png", height = "40px"), href='https://www.dmpstats.com',
-                                  style = "padding-top: 5px; padding-bottom: 5px", target='_blank', id="lbl_dmpLogoLink"), 
-           style="float: right"),
     tags$li(class = "dropdown headerimg", a(img(src = "www/MS_Logo_Linear-01_2.png", height = "40px"), href='https://www.gov.scot/Topics/marine',
                                   style = "padding-top: 10px; padding-bottom: 10px;", target='_blank', id="lbl_marineScotlandLink"),
             style="float: right")  
@@ -128,6 +126,15 @@ app_ui <- function(request) {
                                icon = icon("wrench"),
                                style="stretch",
                                color="success",
+                               no_outline=FALSE
+                             ),
+                             
+                             shinyWidgets::actionBttn(
+                               "button_refresh",
+                               label = "Refresh page",
+                               icon = icon("arrows-rotate"),
+                               style="stretch",
+                               color="danger",
                                no_outline=FALSE
                              ),
                              
@@ -362,6 +369,7 @@ app_ui <- function(request) {
     golem_add_external_resources(),
     bootstrapPage(
       useShinyjs(),
+      shinyjs::extendShinyjs(text = "shinyjs.refresh_page = function() { location.reload(); }", functions = "refresh_page"),
       #extendShinyjs(text = jsCode,functions=c("getParams")),
       # Add custom CSS & Javascript;
       tagList(tags$head(

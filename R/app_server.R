@@ -4,6 +4,7 @@
 #'     DO NOT REMOVE.
 #' @import shiny
 #' @import shinyBS
+#' @import shinyjs
 #' @import shinyWidgets
 #' @import ggplot2
 #' @import leaflet
@@ -95,6 +96,30 @@ app_server <- function( input, output, session ) {
   ## As well as update the tab list (appendTab function) and load in the windfarmfeats_ui module
   ## The windfarmfeats server module is also called here
   observeEvent(input$button_update_Windfarm_tabs, {
+    
+    wfShapeTest <- tryCatch(WFshapes(),
+                       error=function(e) NULL)
+    if(is.null(wfShapeTest)){
+      shinyalert::shinyalert(
+        title = "Error",
+        text = "Shape file not loaded, please click 'Load shapefile'",
+        size = "s", 
+        closeOnEsc = TRUE,
+        closeOnClickOutside = FALSE,
+        html = FALSE,
+        type = "error",
+        showConfirmButton = TRUE,
+        showCancelButton = FALSE,
+        confirmButtonText = "OK",
+        confirmButtonCol = "#AEDEF4",
+        timer = 0,
+        imageUrl = "",
+        animation = TRUE
+      )
+      req(wfShapeTest)
+    }
+    
+    
     rv$WF_shape_choice <- WF_shape_choice()
     rv$WFshapes <- WFshapes()
     cur.popup <- paste0("<strong>Name: </strong>", WFshapes()$NAME)
@@ -1148,6 +1173,12 @@ app_server <- function( input, output, session ) {
     }
     
   })
+  
+  #### Refresh page button ####
+  observeEvent(input$button_refresh, {
+    shinyjs::js$refresh_page()
+  })
+  
   
   ### Some code borrowed from:  https://github.com/richpauloo/shp_oswcr/blob/master/mod_shpPoly.R
   
