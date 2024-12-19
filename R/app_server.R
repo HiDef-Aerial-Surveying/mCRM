@@ -11,6 +11,7 @@
 #' @import tibble
 #' @import stochLAB
 #' @import officedown
+#' @import pkgload
 #' @import sp
 #' @import sf
 #' @importFrom dplyr filter
