@@ -1,3 +1,8 @@
+# mCRM 1.0.0
+* Updated README for the custom shapefile option for wind farms
+* Checked and finalized recommendations from external review
+* Updated the custom shapefile buttons
+
 # mCRM 0.4.1
 * Tool now outputs the proportion of at-risk flight lines
 * Example function for creating migration lines added to guide
