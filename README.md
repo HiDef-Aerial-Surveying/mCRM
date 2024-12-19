@@ -6,9 +6,7 @@
 ## A Shiny app to model collision risk of migratory birds in offshore wind farms
 
 <!-- badges: start -->
-
-[![Lifecycle:
-experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![Lifecycle:Stable](https://img.shields.io/badge/Lifecycle-Stable-97ca00)]
 <!-- badges: end -->
 
 ## Installation
