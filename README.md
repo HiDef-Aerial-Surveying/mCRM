@@ -31,7 +31,7 @@ mCRM::run_app()
 ## mCRM usage (online)
 
 You can access the mCRM on shinyapps.io:
-<https://hidefsurveying.shinyapps.io/mCRM/>
+<https://blackbawks.shinyapps.io/mCRM/>
 
 ## Using the interface
 
