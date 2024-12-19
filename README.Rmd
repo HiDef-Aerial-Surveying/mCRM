@@ -18,7 +18,7 @@ knitr::opts_chunk$set(
 
 
 <!-- badges: start -->
-[![Lifecycle:Stable](https://img.shields.io/badge/Lifecycle-Stable-97ca00)]
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
 ## Installation
